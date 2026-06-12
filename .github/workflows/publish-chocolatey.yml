@@ -1,0 +1,54 @@
+# Publish to Chocolatey
+#
+# This workflow creates and submits a package to the Chocolatey Community Repository.
+#
+# Usage:
+#   1. Automatic (via release):
+#      - Create a new release in your repository
+#      - The workflow will run automatically with default settings
+#
+#   2. Manual (workflow_dispatch):
+#      - Go to Actions -> Publish to Chocolatey -> Run workflow
+#      - Required inputs:
+#        * Version: The version to publish (e.g., v1.0.0)
+#
+# Note: 
+#   - Requires CHOCOLATEY_API_KEY secret to be set in repository settings for pushing to Chocolatey
+
+name: Publish to Chocolatey
+
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., v1.0.0)'
+        required: true
+        type: string
+        default: 'v1.0.0'
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    env:
+      CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+    steps:
+      - name: Install chocolatey
+        uses: crazy-max/ghaction-chocolatey@v3
+        with:
+          args: -v
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create and push package
+        working-directory: ${{ github.workspace }}/packages/chocolatey
+        run: |
+          ./build.ps1 `
+          -Publisher "${{ github.repository_owner }}" `
+          -Name "${{ github.event.repository.name }}" `
+          -Version "${{ github.event.release.tag_name || inputs.version }}" `
+          -Description "🚀 Supercharge Windows 11's File Explorer: Auto-convert windows to tabs, duplicate tabs, reopen closed ones, and more!" `
+          -Summary "Enhanced File Explorer experience for Windows 11" `
+          -ApiKey $env:CHOCOLATEY_API_KEY

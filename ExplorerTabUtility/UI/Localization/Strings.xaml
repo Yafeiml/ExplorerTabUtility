@@ -1,0 +1,140 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <sys:String x:Key="AppTitle">Explorer Tab Utility</sys:String>
+    <sys:String x:Key="NotifyIconText">Explorer Tab Utility: Force new windows to tabs.</sys:String>
+    <sys:String x:Key="JsonFileFilter">JSON files (*.json)|*.json|All Files|*.*</sys:String>
+
+    <sys:String x:Key="AppMenuTooltip">Open application menu</sys:String>
+    <sys:String x:Key="NavShortcuts">Shortcuts</sys:String>
+    <sys:String x:Key="NavPreferences">Preferences</sys:String>
+    <sys:String x:Key="NavAbout">About</sys:String>
+    <sys:String x:Key="NavShortcutsTooltip">Configure keyboard and mouse shortcuts</sys:String>
+    <sys:String x:Key="NavPreferencesTooltip">Configure application settings</sys:String>
+    <sys:String x:Key="NavAboutTooltip">About the application and support options</sys:String>
+
+    <sys:String x:Key="ButtonNew">NEW</sys:String>
+    <sys:String x:Key="ButtonImport">IMPORT</sys:String>
+    <sys:String x:Key="ButtonExport">EXPORT</sys:String>
+    <sys:String x:Key="ButtonSave">SAVE</sys:String>
+    <sys:String x:Key="ButtonNewTooltip">Create a new profile</sys:String>
+    <sys:String x:Key="ButtonImportTooltip">Import profiles from a file</sys:String>
+    <sys:String x:Key="ButtonExportTooltip">Export profiles to a file</sys:String>
+    <sys:String x:Key="ButtonSaveTooltip">Persist all profile changes</sys:String>
+
+    <sys:String x:Key="AutoSave">Auto save</sys:String>
+    <sys:String x:Key="AutoSaveTooltip">Automatically save profiles when closing the window</sys:String>
+    <sys:String x:Key="ApplicationSettings">Application Settings</sys:String>
+    <sys:String x:Key="AutoUpdate">Auto update</sys:String>
+    <sys:String x:Key="AutoUpdateTooltip">Automatically check for updates on startup</sys:String>
+    <sys:String x:Key="ThemeIssues">I have theme issues</sys:String>
+    <sys:String x:Key="ThemeIssuesTooltip">Use alternative window hiding method that preserves your custom File-Explorer theme.&#x0a;Enable this if you have theme-related issues</sys:String>
+    <sys:String x:Key="SaveClosedHistory">Save closed history</sys:String>
+    <sys:String x:Key="SaveClosedHistoryTooltip">Save closed windows history so you can reopen them later (ReopenClosed, Tab search)</sys:String>
+    <sys:String x:Key="RestorePreviousWindows">Restore previous windows</sys:String>
+    <sys:String x:Key="RestorePreviousWindowsTooltip">Restore previously opened windows after restart or crash</sys:String>
+    <sys:String x:Key="HideTrayIcon">Hide tray icon</sys:String>
+    <sys:String x:Key="HideTrayIconTooltip">Hide the system tray icon</sys:String>
+
+    <sys:String x:Key="WindowHook">Window Hook</sys:String>
+    <sys:String x:Key="ReuseTabs">Reuse Tabs</sys:String>
+    <sys:String x:Key="KeyboardHook">Keyboard Hook</sys:String>
+    <sys:String x:Key="MouseHook">Mouse Hook</sys:String>
+
+    <sys:String x:Key="TrayKeyboardHookTooltip">Enable or disable keyboard shortcuts</sys:String>
+    <sys:String x:Key="TrayMouseHookTooltip">Enable or disable mouse shortcuts</sys:String>
+    <sys:String x:Key="TrayWindowHookTooltip">Toggle automatic redirection of new Explorer windows to tabs</sys:String>
+    <sys:String x:Key="TrayReuseTabsTooltip">When enabled, navigates to existing tabs instead of opening duplicate tabs</sys:String>
+    <sys:String x:Key="TrayAddToStartup">Add to startup</sys:String>
+    <sys:String x:Key="TrayAddToStartupTooltip">Automatically start Explorer Tab Utility when Windows starts</sys:String>
+    <sys:String x:Key="TrayCheckForUpdates">Check for updates</sys:String>
+    <sys:String x:Key="TrayCheckForUpdatesTooltip">Check if a newer version of Explorer Tab Utility is available</sys:String>
+    <sys:String x:Key="TraySettings">Settings</sys:String>
+    <sys:String x:Key="TraySettingsTooltip">Open the settings window to configure the application</sys:String>
+    <sys:String x:Key="TrayExit">Exit</sys:String>
+    <sys:String x:Key="TrayExitTooltip">Close Explorer Tab Utility and stop all hooks</sys:String>
+
+    <sys:String x:Key="ProfileEnableTooltip">Enable or disable this profile</sys:String>
+    <sys:String x:Key="ProfileNamePlaceholder">Name</sys:String>
+    <sys:String x:Key="ProfileNameTooltip">Name of the profile</sys:String>
+    <sys:String x:Key="ProfileHotkeysPlaceholder">Hotkeys</sys:String>
+    <sys:String x:Key="ProfileHotkeysTooltip">Keyboard or mouse keys to listen for. Click to record a new key combination.</sys:String>
+    <sys:String x:Key="ProfileScopeTooltip">Scope of the hotkeys: Global (anywhere) or only when File Explorer is focused</sys:String>
+    <sys:String x:Key="ProfileActionTooltip">Action to perform when the hotkeys are pressed</sys:String>
+    <sys:String x:Key="ProfileMoreOptionsTooltip">Show more options</sys:String>
+    <sys:String x:Key="ProfileDeleteTooltip">Delete this profile</sys:String>
+    <sys:String x:Key="ProfileLocationPlaceholder">Location</sys:String>
+    <sys:String x:Key="ProfileLocationTooltip">Path to open when the hotkeys are pressed. (folder, file, website, CLSID)</sys:String>
+    <sys:String x:Key="ProfileDelay">Delay</sys:String>
+    <sys:String x:Key="ProfileDelayTooltip">Delay in milliseconds before performing the action</sys:String>
+    <sys:String x:Key="ProfileHandled">Handled</sys:String>
+    <sys:String x:Key="ProfileHandledTooltip">Prevent further processing of the hotkeys in other applications</sys:String>
+    <sys:String x:Key="ProfileTab">Tab</sys:String>
+    <sys:String x:Key="ProfileTabTooltip">Open as tab instead of a new window</sys:String>
+
+    <sys:String x:Key="TabSearchClearTooltip">Clear closed windows history</sys:String>
+    <sys:String x:Key="ConfirmClearHistoryTitle">Confirm Clear History</sys:String>
+    <sys:String x:Key="ConfirmClearHistoryMessage">Are you sure you want to clear the closed windows history?</sys:String>
+
+    <sys:String x:Key="MessageBoxOK">OK</sys:String>
+    <sys:String x:Key="MessageBoxCancel">Cancel</sys:String>
+    <sys:String x:Key="MessageBoxYes">Yes</sys:String>
+    <sys:String x:Key="MessageBoxNo">No</sys:String>
+    <sys:String x:Key="DuplicateInstanceMessage">Another instance is already running.&#x0a;Check in System Tray Icons.</sys:String>
+    <sys:String x:Key="TrayHiddenHotkeyMessage">You can show the app again by pressing {0}</sys:String>
+    <sys:String x:Key="TrayHiddenNoHotkeyMessage">Cannot hide tray icon if no hotkey is configured to toggle visibility.</sys:String>
+    <sys:String x:Key="RestorePreviousPrompt">Do you want to restore previously opened windows?</sys:String>
+
+    <sys:String x:Key="AboutSubtitle">Enhance your Windows File Explorer experience</sys:String>
+    <sys:String x:Key="AboutStarOnGitHub">Star on GitHub</sys:String>
+    <sys:String x:Key="AboutSupportProject">Support the Project</sys:String>
+    <sys:String x:Key="AboutSupportDescription">If you find this utility helpful, consider supporting its development through one of these options:</sys:String>
+    <sys:String x:Key="AboutGitHubSponsors">GitHub Sponsors</sys:String>
+    <sys:String x:Key="AboutPatreon">Patreon</sys:String>
+    <sys:String x:Key="AboutBuyMeACoffee">Buy Me A Coffee</sys:String>
+    <sys:String x:Key="AboutPayPal">PayPal</sys:String>
+    <sys:String x:Key="AboutDeveloper">Developer</sys:String>
+    <sys:String x:Key="AboutCurrentSupporters">Current Supporters</sys:String>
+    <sys:String x:Key="AboutSupportersThanks">Thank you to all the amazing people who support this project!</sys:String>
+    <sys:String x:Key="AboutBeFirstSupporter">Be the first to support this project!</sys:String>
+    <sys:String x:Key="AboutSupportKeepsAlive">Your support helps keep this project alive</sys:String>
+
+    <sys:String x:Key="Enum_HotkeyScope_Global">Global</sys:String>
+    <sys:String x:Key="Enum_HotkeyScope_FileExplorer">File Explorer</sys:String>
+    <sys:String x:Key="EnumDescription_HotkeyScope_Global">Works everywhere.</sys:String>
+    <sys:String x:Key="EnumDescription_HotkeyScope_FileExplorer">Works only when File Explorer is focused.</sys:String>
+
+    <sys:String x:Key="Enum_HotKeyAction_Open">Open</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_Duplicate">Duplicate</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_ReopenClosed">Reopen Closed</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_TabSearch">Tab Search</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_NavigateBack">Navigate Back</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_NavigateUp">Navigate Up</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_NavigateForward">Navigate Forward</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_SetTargetWindow">Set Target Window</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_ToggleWinHook">Toggle Window Hook</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_ToggleReuseTabs">Toggle Reuse Tabs</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_ToggleVisibility">Toggle Visibility</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_DetachTab">Detach Tab</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_SnapRight">Snap Right</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_SnapLeft">Snap Left</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_SnapUp">Snap Up</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_SnapDown">Snap Down</sys:String>
+
+    <sys:String x:Key="EnumDescription_HotKeyAction_Open">Open a new tab/window with the specified location.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_Duplicate">Duplicate the current tab.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_ReopenClosed">Reopen the last closed location.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_TabSearch">Open tab search popup to find and switch between tabs.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_NavigateBack">Navigate back.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_NavigateUp">Navigate up.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_NavigateForward">Navigate forward.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_SetTargetWindow">Mark the window that will receive the new tabs.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_ToggleWinHook">Toggle the window hook.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_ToggleReuseTabs">Toggle the reuse tabs option.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_ToggleVisibility">Show/Hide the app.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_DetachTab">Detach the current tab.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_SnapRight">Snap the current window to the right.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_SnapLeft">Snap the current window to the left.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_SnapUp">Snap the current window to the top.</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_SnapDown">Snap the current window to the bottom.</sys:String>
+</ResourceDictionary>

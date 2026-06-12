@@ -1,0 +1,12 @@
+name: Publish to WinGet
+on:
+  release:
+    types: [released]
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: vedantmgoyal9/winget-releaser@main
+        with:
+          identifier: ${{ github.repository_owner }}.${{ github.event.repository.name }}
+          token: ${{ secrets.WINGET_TOKEN }}

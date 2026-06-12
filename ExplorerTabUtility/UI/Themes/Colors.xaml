@@ -1,0 +1,67 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Colors -->
+    <Color x:Key="PrimaryColor">#00838F</Color>
+    <Color x:Key="PrimaryLightColor">#0097A7</Color>
+    <Color x:Key="TextPrimaryColor">#C8D1D9</Color>
+    <Color x:Key="TextSecondaryColor">#A9B2BC</Color>
+    <Color x:Key="TextTertiaryColor">#8A939E</Color>
+    <Color x:Key="TextAccentColor">#4DD0E1</Color>
+    <Color x:Key="BorderColor">#393E46</Color>
+    <Color x:Key="ControlBackgroundColor">#282E38</Color>
+    <Color x:Key="ControlHoverColor">#36424A</Color>
+    <Color x:Key="DangerColor">#E53935</Color>
+    <Color x:Key="DropdownBackgroundColor">#2A2F37</Color>
+    <Color x:Key="ShadowColor">#121212</Color>
+    <Color x:Key="SuccessColor">#43A047</Color>
+    <Color x:Key="WarningColor">#FFA000</Color>
+    <Color x:Key="AccentColor">#00838F</Color>
+    <Color x:Key="StatusActiveColor">#43A047</Color>
+    <Color x:Key="StatusInactiveColor">#757575</Color>
+
+    <!-- Brushes -->
+    <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}" />
+    <SolidColorBrush x:Key="PrimaryLightBrush" Color="{StaticResource PrimaryLightColor}" />
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="{StaticResource TextTertiaryColor}" />
+    <SolidColorBrush x:Key="TextAccentBrush" Color="{StaticResource TextAccentColor}" />
+    <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="ControlBackgroundBrush" Color="{StaticResource ControlBackgroundColor}" />
+    <SolidColorBrush x:Key="ControlHoverBrush" Color="{StaticResource ControlHoverColor}" />
+    <SolidColorBrush x:Key="DropdownBackgroundBrush" Color="{StaticResource DropdownBackgroundColor}" />
+    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}" />
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+    <SolidColorBrush x:Key="StatusActiveBrush" Color="{StaticResource StatusActiveColor}" />
+    <SolidColorBrush x:Key="StatusInactiveBrush" Color="{StaticResource StatusInactiveColor}" />
+
+    <!-- Gradients -->
+    <LinearGradientBrush x:Key="BackgroundGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FF1A1F26" Offset="0" />
+        <GradientStop Color="#FF222831" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="TitleBarBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#E5222831" Offset="0" />
+        <GradientStop Color="#E5393E46" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="BorderGradientBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#33222831" Offset="0.0" />
+        <GradientStop Color="#99006064" Offset="0.3" />
+        <GradientStop Color="#BB00838F" Offset="0.5" />
+        <GradientStop Color="#99006064" Offset="0.7" />
+        <GradientStop Color="#33222831" Offset="1.0" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="CardGradientBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#FF2D3239" Offset="0.0" />
+        <GradientStop Color="#FF343B44" Offset="0.3" />
+        <GradientStop Color="#FF3C434C" Offset="0.7" />
+        <GradientStop Color="#FF414852" Offset="1.0" />
+    </LinearGradientBrush>
+
+</ResourceDictionary>

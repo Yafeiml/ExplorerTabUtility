@@ -1,0 +1,140 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <sys:String x:Key="AppTitle">Explorer Tab Utility</sys:String>
+    <sys:String x:Key="NotifyIconText">Explorer Tab Utility：强制新资源管理器窗口打开为标签页。</sys:String>
+    <sys:String x:Key="JsonFileFilter">JSON 文件 (*.json)|*.json|所有文件|*.*</sys:String>
+
+    <sys:String x:Key="AppMenuTooltip">打开应用菜单</sys:String>
+    <sys:String x:Key="NavShortcuts">快捷键</sys:String>
+    <sys:String x:Key="NavPreferences">偏好设置</sys:String>
+    <sys:String x:Key="NavAbout">关于</sys:String>
+    <sys:String x:Key="NavShortcutsTooltip">配置键盘和鼠标快捷键</sys:String>
+    <sys:String x:Key="NavPreferencesTooltip">配置应用设置</sys:String>
+    <sys:String x:Key="NavAboutTooltip">查看应用信息和支持选项</sys:String>
+
+    <sys:String x:Key="ButtonNew">新建</sys:String>
+    <sys:String x:Key="ButtonImport">导入</sys:String>
+    <sys:String x:Key="ButtonExport">导出</sys:String>
+    <sys:String x:Key="ButtonSave">保存</sys:String>
+    <sys:String x:Key="ButtonNewTooltip">创建新配置</sys:String>
+    <sys:String x:Key="ButtonImportTooltip">从文件导入配置</sys:String>
+    <sys:String x:Key="ButtonExportTooltip">将配置导出到文件</sys:String>
+    <sys:String x:Key="ButtonSaveTooltip">保存所有配置更改</sys:String>
+
+    <sys:String x:Key="AutoSave">自动保存</sys:String>
+    <sys:String x:Key="AutoSaveTooltip">关闭窗口时自动保存配置</sys:String>
+    <sys:String x:Key="ApplicationSettings">应用设置</sys:String>
+    <sys:String x:Key="AutoUpdate">自动更新</sys:String>
+    <sys:String x:Key="AutoUpdateTooltip">启动时自动检查更新</sys:String>
+    <sys:String x:Key="ThemeIssues">我遇到主题问题</sys:String>
+    <sys:String x:Key="ThemeIssuesTooltip">使用替代的窗口隐藏方式，以保留自定义文件资源管理器主题。&#x0a;如果遇到主题相关问题，请启用此项</sys:String>
+    <sys:String x:Key="SaveClosedHistory">保存关闭历史</sys:String>
+    <sys:String x:Key="SaveClosedHistoryTooltip">保存已关闭窗口历史，之后可重新打开（ReopenClosed、标签搜索）</sys:String>
+    <sys:String x:Key="RestorePreviousWindows">恢复之前的窗口</sys:String>
+    <sys:String x:Key="RestorePreviousWindowsTooltip">重启或崩溃后恢复之前打开的窗口</sys:String>
+    <sys:String x:Key="HideTrayIcon">隐藏托盘图标</sys:String>
+    <sys:String x:Key="HideTrayIconTooltip">隐藏系统托盘图标</sys:String>
+
+    <sys:String x:Key="WindowHook">窗口钩子</sys:String>
+    <sys:String x:Key="ReuseTabs">复用标签页</sys:String>
+    <sys:String x:Key="KeyboardHook">键盘钩子</sys:String>
+    <sys:String x:Key="MouseHook">鼠标钩子</sys:String>
+
+    <sys:String x:Key="TrayKeyboardHookTooltip">启用或禁用键盘快捷键</sys:String>
+    <sys:String x:Key="TrayMouseHookTooltip">启用或禁用鼠标快捷键</sys:String>
+    <sys:String x:Key="TrayWindowHookTooltip">切换是否自动将新的资源管理器窗口重定向为标签页</sys:String>
+    <sys:String x:Key="TrayReuseTabsTooltip">启用后会跳转到已有标签页，而不是打开重复标签页</sys:String>
+    <sys:String x:Key="TrayAddToStartup">开机自启动</sys:String>
+    <sys:String x:Key="TrayAddToStartupTooltip">Windows 启动时自动启动 Explorer Tab Utility</sys:String>
+    <sys:String x:Key="TrayCheckForUpdates">检查更新</sys:String>
+    <sys:String x:Key="TrayCheckForUpdatesTooltip">检查是否有新版 Explorer Tab Utility</sys:String>
+    <sys:String x:Key="TraySettings">设置</sys:String>
+    <sys:String x:Key="TraySettingsTooltip">打开设置窗口以配置应用</sys:String>
+    <sys:String x:Key="TrayExit">退出</sys:String>
+    <sys:String x:Key="TrayExitTooltip">关闭 Explorer Tab Utility 并停止所有钩子</sys:String>
+
+    <sys:String x:Key="ProfileEnableTooltip">启用或禁用此配置</sys:String>
+    <sys:String x:Key="ProfileNamePlaceholder">名称</sys:String>
+    <sys:String x:Key="ProfileNameTooltip">配置名称</sys:String>
+    <sys:String x:Key="ProfileHotkeysPlaceholder">快捷键</sys:String>
+    <sys:String x:Key="ProfileHotkeysTooltip">要监听的键盘或鼠标按键。点击后录制新的按键组合。</sys:String>
+    <sys:String x:Key="ProfileScopeTooltip">快捷键作用范围：全局，或仅在文件资源管理器获得焦点时生效</sys:String>
+    <sys:String x:Key="ProfileActionTooltip">按下快捷键时执行的操作</sys:String>
+    <sys:String x:Key="ProfileMoreOptionsTooltip">显示更多选项</sys:String>
+    <sys:String x:Key="ProfileDeleteTooltip">删除此配置</sys:String>
+    <sys:String x:Key="ProfileLocationPlaceholder">位置</sys:String>
+    <sys:String x:Key="ProfileLocationTooltip">按下快捷键时打开的位置（文件夹、文件、网站、CLSID）</sys:String>
+    <sys:String x:Key="ProfileDelay">延迟</sys:String>
+    <sys:String x:Key="ProfileDelayTooltip">执行操作前等待的毫秒数</sys:String>
+    <sys:String x:Key="ProfileHandled">拦截</sys:String>
+    <sys:String x:Key="ProfileHandledTooltip">阻止其他应用继续处理此快捷键</sys:String>
+    <sys:String x:Key="ProfileTab">标签页</sys:String>
+    <sys:String x:Key="ProfileTabTooltip">以标签页打开，而不是新窗口</sys:String>
+
+    <sys:String x:Key="TabSearchClearTooltip">清空已关闭窗口历史</sys:String>
+    <sys:String x:Key="ConfirmClearHistoryTitle">确认清空历史</sys:String>
+    <sys:String x:Key="ConfirmClearHistoryMessage">确定要清空已关闭窗口历史吗？</sys:String>
+
+    <sys:String x:Key="MessageBoxOK">确定</sys:String>
+    <sys:String x:Key="MessageBoxCancel">取消</sys:String>
+    <sys:String x:Key="MessageBoxYes">是</sys:String>
+    <sys:String x:Key="MessageBoxNo">否</sys:String>
+    <sys:String x:Key="DuplicateInstanceMessage">另一个实例已经在运行。&#x0a;请检查系统托盘图标。</sys:String>
+    <sys:String x:Key="TrayHiddenHotkeyMessage">可按 {0} 再次显示应用</sys:String>
+    <sys:String x:Key="TrayHiddenNoHotkeyMessage">未配置用于切换显示状态的快捷键时，不能隐藏托盘图标。</sys:String>
+    <sys:String x:Key="RestorePreviousPrompt">是否恢复之前打开的窗口？</sys:String>
+
+    <sys:String x:Key="AboutSubtitle">增强你的 Windows 文件资源管理器体验</sys:String>
+    <sys:String x:Key="AboutStarOnGitHub">在 GitHub 上加星</sys:String>
+    <sys:String x:Key="AboutSupportProject">支持项目</sys:String>
+    <sys:String x:Key="AboutSupportDescription">如果这个工具对你有帮助，可以通过以下方式支持它的开发：</sys:String>
+    <sys:String x:Key="AboutGitHubSponsors">GitHub Sponsors</sys:String>
+    <sys:String x:Key="AboutPatreon">Patreon</sys:String>
+    <sys:String x:Key="AboutBuyMeACoffee">Buy Me A Coffee</sys:String>
+    <sys:String x:Key="AboutPayPal">PayPal</sys:String>
+    <sys:String x:Key="AboutDeveloper">开发者</sys:String>
+    <sys:String x:Key="AboutCurrentSupporters">当前支持者</sys:String>
+    <sys:String x:Key="AboutSupportersThanks">感谢所有支持这个项目的人！</sys:String>
+    <sys:String x:Key="AboutBeFirstSupporter">成为第一个支持者！</sys:String>
+    <sys:String x:Key="AboutSupportKeepsAlive">你的支持会帮助这个项目持续维护</sys:String>
+
+    <sys:String x:Key="Enum_HotkeyScope_Global">全局</sys:String>
+    <sys:String x:Key="Enum_HotkeyScope_FileExplorer">文件资源管理器</sys:String>
+    <sys:String x:Key="EnumDescription_HotkeyScope_Global">在所有位置生效。</sys:String>
+    <sys:String x:Key="EnumDescription_HotkeyScope_FileExplorer">仅在文件资源管理器获得焦点时生效。</sys:String>
+
+    <sys:String x:Key="Enum_HotKeyAction_Open">打开</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_Duplicate">复制当前标签页</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_ReopenClosed">重新打开已关闭</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_TabSearch">标签搜索</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_NavigateBack">后退</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_NavigateUp">向上一级</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_NavigateForward">前进</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_SetTargetWindow">设置目标窗口</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_ToggleWinHook">切换窗口钩子</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_ToggleReuseTabs">切换复用标签页</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_ToggleVisibility">切换显示状态</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_DetachTab">分离当前标签页</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_SnapRight">贴靠到右侧</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_SnapLeft">贴靠到左侧</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_SnapUp">贴靠到顶部</sys:String>
+    <sys:String x:Key="Enum_HotKeyAction_SnapDown">贴靠到底部</sys:String>
+
+    <sys:String x:Key="EnumDescription_HotKeyAction_Open">使用指定位置打开新的标签页或窗口。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_Duplicate">复制当前标签页。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_ReopenClosed">重新打开上一个关闭的位置。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_TabSearch">打开标签搜索弹窗，用于查找并切换标签页。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_NavigateBack">导航后退。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_NavigateUp">导航到上一级。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_NavigateForward">导航前进。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_SetTargetWindow">标记用于接收新标签页的窗口。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_ToggleWinHook">切换窗口钩子。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_ToggleReuseTabs">切换复用标签页选项。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_ToggleVisibility">显示或隐藏应用。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_DetachTab">分离当前标签页。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_SnapRight">将当前窗口贴靠到右侧。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_SnapLeft">将当前窗口贴靠到左侧。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_SnapUp">将当前窗口贴靠到顶部。</sys:String>
+    <sys:String x:Key="EnumDescription_HotKeyAction_SnapDown">将当前窗口贴靠到底部。</sys:String>
+</ResourceDictionary>

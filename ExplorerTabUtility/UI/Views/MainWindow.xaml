@@ -1,0 +1,352 @@
+<Window x:Class="ExplorerTabUtility.UI.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:ExplorerTabUtility.UI.Views"
+        xmlns:managers="clr-namespace:ExplorerTabUtility.Managers"
+        Title="{DynamicResource AppTitle}"
+        Width="850" Height="600"
+        MinWidth="700" MinHeight="175"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="CanResizeWithGrip"
+        WindowStyle="None"
+        WindowStartupLocation="CenterScreen"
+        TextBlock.Foreground="{StaticResource TextPrimaryBrush}"
+        TextElement.Foreground="{StaticResource TextPrimaryBrush}">
+
+    <Border Background="{StaticResource BackgroundGradientBrush}"
+            BorderBrush="{StaticResource BorderGradientBrush}"
+            CornerRadius="5"
+            BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Title Bar -->
+            <Border x:Name="TitleBar" Grid.Row="0" Background="{StaticResource TitleBarBrush}" CornerRadius="4, 4, 0, 0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Menu Button -->
+                    <ToggleButton x:Name="DrawerButton" Grid.Column="0" Style="{StaticResource ToggleButtonIconStyle}" Margin="6,0,0,0"
+                                  Content="&#x2630;" Focusable="False" ToolTip="{DynamicResource AppMenuTooltip}" />
+
+                    <!-- Window Title -->
+                    <TextBlock Grid.Column="1" Text="{DynamicResource AppTitle}" VerticalAlignment="Center" Margin="8,0"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               FontWeight="SemiBold"
+                               FontSize="14" />
+
+                    <!-- Window Controls -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="MinimizeButton" Style="{StaticResource IconButtonStyle}" Content="&#x2212;" Focusable="False" />
+                        <Button x:Name="MaximizeButton" Focusable="False">
+                            <Button.Style>
+                                <Style BasedOn="{StaticResource IconButtonStyle}" TargetType="Button">
+                                    <Setter Property="Content" Value="&#x2610;" />
+                                    <Style.Triggers>
+                                        <DataTrigger
+                                            Binding="{Binding WindowState, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}}"
+                                            Value="Maximized">
+                                            <Setter Property="Content" Value="&#x2750;" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button x:Name="CloseButton" Style="{StaticResource IconButtonStyle}" Content="&#x2715;" Focusable="False"
+                                Margin="0,0,8,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Main Content -->
+            <Grid Grid.Row="1">
+                <!-- Custom Drawer Implementation -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Menu Drawer -->
+                    <Border Grid.Column="0"
+                            Background="{StaticResource CardGradientBrush}"
+                            BorderBrush="{StaticResource BorderGradientBrush}"
+                            BorderThickness="0,0,1,0"
+                            CornerRadius="0,0,0,4"
+                            Width="0">
+                        <DockPanel>
+                            <ListBox x:Name="NavigationList" DockPanel.Dock="Top" SelectedIndex="0"
+                                     Style="{StaticResource NavigationListBoxStyle}">
+                                <ListBox.Resources>
+                                    <Storyboard x:Key="CloseDrawerStoryboard">
+                                        <BooleanAnimationUsingKeyFrames Storyboard.TargetName="DrawerButton"
+                                                                        Storyboard.TargetProperty="IsChecked">
+                                            <DiscreteBooleanKeyFrame KeyTime="0:0:0" Value="False" />
+                                        </BooleanAnimationUsingKeyFrames>
+                                    </Storyboard>
+                                </ListBox.Resources>
+                                <ListBox.Triggers>
+                                    <EventTrigger RoutedEvent="ListBox.MouseLeftButtonDown">
+                                        <BeginStoryboard Storyboard="{StaticResource CloseDrawerStoryboard}"/>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="ListBox.PreviewMouseDoubleClick">
+                                        <BeginStoryboard Storyboard="{StaticResource CloseDrawerStoryboard}"/>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="ListBox.KeyDown">
+                                        <BeginStoryboard Storyboard="{StaticResource CloseDrawerStoryboard}"/>
+                                    </EventTrigger>
+                                </ListBox.Triggers>
+                                <ListBoxItem ToolTip="{DynamicResource NavShortcutsTooltip}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#x1F5F2;" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock Text="{DynamicResource NavShortcuts}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </ListBoxItem>
+                                <ListBoxItem ToolTip="{DynamicResource NavPreferencesTooltip}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE713;" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock Text="{DynamicResource NavPreferences}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </ListBoxItem>
+                                <ListBoxItem ToolTip="{DynamicResource NavAboutTooltip}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE939;" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock Text="{DynamicResource NavAbout}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </ListBoxItem>
+                            </ListBox>
+                        </DockPanel>
+
+                        <Border.Effect>
+                            <DropShadowEffect ShadowDepth="2" BlurRadius="4" Opacity="0.3" Color="{StaticResource ShadowColor}" />
+                        </Border.Effect>
+
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsChecked, ElementName=DrawerButton}" Value="True">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"
+                                                                     BeginTime="0:0:0.1" />
+                                                    <DoubleAnimation Storyboard.TargetProperty="Width" To="165" Duration="0:0:0.3">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut" />
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
+                                                    <DoubleAnimation Storyboard.TargetProperty="Width" To="0" Duration="0:0:0.3">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseIn" />
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                    <!-- Main Content -->
+                    <Grid Grid.Column="1">
+                        <!-- Tab Control -->
+                        <TabControl Style="{StaticResource CustomTabControlStyle}"
+                                    SelectedIndex="{Binding SelectedIndex, ElementName=NavigationList}">
+                            <TabControl.Effect>
+                                <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.2"
+                                                  Color="{StaticResource ShadowColor}" />
+                            </TabControl.Effect>
+                            <!-- Shortcuts Tab -->
+                            <TabItem Header="{DynamicResource NavShortcuts}" Visibility="Collapsed">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Toolbar -->
+                                    <DockPanel Grid.Row="0" Margin="16,8" LastChildFill="False">
+                                        <!-- Action Buttons -->
+                                        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                                            <Button x:Name="BtnNewProfile" Content="{DynamicResource ButtonNew}" Style="{StaticResource FlatButtonStyle}"
+                                                    ToolTip="{DynamicResource ButtonNewTooltip}" />
+                                            <Button x:Name="BtnImport" Content="{DynamicResource ButtonImport}" Style="{StaticResource FlatButtonStyle}"
+                                                    ToolTip="{DynamicResource ButtonImportTooltip}" />
+                                            <Button x:Name="BtnExport" Content="{DynamicResource ButtonExport}" Style="{StaticResource FlatButtonStyle}"
+                                                    ToolTip="{DynamicResource ButtonExportTooltip}" />
+                                            <Button x:Name="BtnSave" Content="{DynamicResource ButtonSave}" Style="{StaticResource FlatButtonStyle}"
+                                                    ToolTip="{DynamicResource ButtonSaveTooltip}" />
+                                        </StackPanel>
+
+                                        <!-- Save on Exit Toggle -->
+                                        <CheckBox DockPanel.Dock="Right" x:Name="CbAutoSaveProfiles"
+                                                  Content="{DynamicResource AutoSave}" Style="{StaticResource CustomCheckBoxStyle}"
+                                                  ToolTip="{DynamicResource AutoSaveTooltip}" />
+                                    </DockPanel>
+
+                                    <!-- Profiles Panel -->
+                                    <ScrollViewer Grid.Row="1" Margin="16,8,4,4"
+                                                  VerticalScrollBarVisibility="Visible"
+                                                  Style="{StaticResource CustomScrollViewerStyle}">
+                                        <StackPanel x:Name="ProfilesPanel" />
+                                    </ScrollViewer>
+                                </Grid>
+                            </TabItem>
+
+                            <!-- Preferences Tab -->
+                            <TabItem Header="{DynamicResource NavPreferences}" Visibility="Collapsed">
+                                <StackPanel Margin="16, 8">
+                                    <GroupBox Header="{DynamicResource ApplicationSettings}"
+                                              Style="{StaticResource CustomGroupBoxStyle}">
+                                        <StackPanel Margin="8">
+                                            <CheckBox x:Name="CbAutoUpdate" Content="{DynamicResource AutoUpdate}"
+                                                      Style="{StaticResource CustomCheckBoxStyle}"
+                                                      ToolTip="{DynamicResource AutoUpdateTooltip}" />
+                                            <CheckBox x:Name="CbThemeIssue" Content="{DynamicResource ThemeIssues}"
+                                                      Style="{StaticResource CustomCheckBoxStyle}"
+                                                      ToolTip="{DynamicResource ThemeIssuesTooltip}" />
+                                            <CheckBox x:Name="CbSaveClosedHistory" Content="{DynamicResource SaveClosedHistory}"
+                                                      Style="{StaticResource CustomCheckBoxStyle}"
+                                                      ToolTip="{DynamicResource SaveClosedHistoryTooltip}" />
+                                            <CheckBox x:Name="CbRestorePreviousWindows" Content="{DynamicResource RestorePreviousWindows}"
+                                                      Style="{StaticResource CustomCheckBoxStyle}"
+                                                      ToolTip="{DynamicResource RestorePreviousWindowsTooltip}" />
+                                            <CheckBox x:Name="CbHideTrayIcon" Content="{DynamicResource HideTrayIcon}"
+                                                      Style="{StaticResource CustomCheckBoxStyle}"
+                                                      ToolTip="{DynamicResource HideTrayIconTooltip}" />
+                                        </StackPanel>
+                                    </GroupBox>
+                                </StackPanel>
+                            </TabItem>
+
+                            <!-- About Tab -->
+                            <TabItem Header="{DynamicResource NavAbout}" Visibility="Collapsed">
+                                <local:AboutView />
+                            </TabItem>
+                        </TabControl>
+                    </Grid>
+                </Grid>
+            </Grid>
+
+            <!-- Status Bar -->
+            <Border Grid.Row="2" Background="{StaticResource ControlBackgroundBrush}" BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0,1,0,0" CornerRadius="0,0,4,4">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"  Margin="8,4">
+                        <!-- Window Hook Status -->
+                        <StackPanel Orientation="Horizontal" Margin="8,0">
+                            <Ellipse Width="12" Height="12" Margin="0,0,6,0" StrokeThickness="1">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource StatusInactiveBrush}" />
+                                        <Setter Property="Stroke" Value="{StaticResource BorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Path=(managers:SettingsManager.IsWindowHookActive)}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource StatusActiveBrush}" />
+                                                <Setter Property="Effect">
+                                                    <Setter.Value>
+                                                        <DropShadowEffect ShadowDepth="0" BlurRadius="8"
+                                                                          Color="{StaticResource StatusActiveColor}" Opacity="0.7" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{DynamicResource WindowHook}" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Reuse Tabs Status -->
+                        <StackPanel Orientation="Horizontal" Margin="8,0">
+                            <Ellipse Width="12" Height="12" Margin="0,0,6,0" StrokeThickness="1">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource StatusInactiveBrush}" />
+                                        <Setter Property="Stroke" Value="{StaticResource BorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Path=(managers:SettingsManager.ReuseTabs)}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource StatusActiveBrush}" />
+                                                <Setter Property="Effect">
+                                                    <Setter.Value>
+                                                        <DropShadowEffect ShadowDepth="0" BlurRadius="8"
+                                                                          Color="{StaticResource StatusActiveColor}" Opacity="0.7" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{DynamicResource ReuseTabs}" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Keyboard Hook Status -->
+                        <StackPanel Orientation="Horizontal" Margin="8,0">
+                            <Ellipse Width="12" Height="12" Margin="0,0,6,0" StrokeThickness="1">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource StatusInactiveBrush}" />
+                                        <Setter Property="Stroke" Value="{StaticResource BorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Path=(managers:SettingsManager.IsKeyboardHookActive)}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource StatusActiveBrush}" />
+                                                <Setter Property="Effect">
+                                                    <Setter.Value>
+                                                        <DropShadowEffect ShadowDepth="0" BlurRadius="8"
+                                                                          Color="{StaticResource StatusActiveColor}" Opacity="0.7" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{DynamicResource KeyboardHook}" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Mouse Hook Status -->
+                        <StackPanel Orientation="Horizontal" Margin="8,0">
+                            <Ellipse Width="12" Height="12" Margin="0,0,6,0" StrokeThickness="1">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource StatusInactiveBrush}" />
+                                        <Setter Property="Stroke" Value="{StaticResource BorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Path=(managers:SettingsManager.IsMouseHookActive)}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource StatusActiveBrush}" />
+                                                <Setter Property="Effect">
+                                                    <Setter.Value>
+                                                        <DropShadowEffect ShadowDepth="0" BlurRadius="8"
+                                                                          Color="{StaticResource StatusActiveColor}" Opacity="0.7" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{DynamicResource MouseHook}" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>
