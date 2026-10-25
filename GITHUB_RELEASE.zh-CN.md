@@ -1,68 +1,26 @@
-# ExplorerTabUtility v2.6.0 中文维护版
+# ExplorerTabUtility v2.6.1 中文维护版
 
-这是基于 [w4po/ExplorerTabUtility](https://github.com/w4po/ExplorerTabUtility) 的维护版本，重点修复关机时报错问题，并升级到 .NET 10，同时增加简体中文界面支持。
+合并开机自启动、Shell/COM 生命周期、窗口转换和托盘响应修复。基于 [w4po/ExplorerTabUtility](https://github.com/w4po/ExplorerTabUtility)，保留 MIT 许可证及原作者致谢。
 
-## 推荐下载
+## 下载
 
-如果你已经安装 `.NET 10 Desktop Runtime`，推荐下载：
+- Windows x64 且已安装 .NET 10 Desktop Runtime：`ExplorerTabUtility_v2.6.1_x64_Net10.0_FrameworkDependent.zip`。
+- 使用 .NET Framework 4.8.1：`ExplorerTabUtility_v2.6.1_x64_NetFW4.8.1.zip`。
+- x86、ARM64 使用文件名中对应架构的 ZIP。
 
-- `ExplorerTabUtility_v2.6.0_x64_Net10.0_FrameworkDependent.zip`
+完整解压后运行 `ExplorerTabUtility\ExplorerTabUtility.exe`。先退出旧版托盘进程再替换文件，用户 AppData 设置继续保留。ZIP 未做代码签名，下载后可对照附件 `SHA256SUMS.txt` 检查 SHA256。
 
-如果你的环境暂时无法使用 .NET 10，可以下载备用包：
+## 修复
 
-- `ExplorerTabUtility_v2.6.0_x64_NetFW4.8.1.zip`
+- 创建缺失的开机启动注册表子键，新命令正确引用完整程序路径，兼容旧的未引号/带引号命令，保持任务管理器禁用状态和其他启动项不变。对应 [issue #1](https://github.com/Yafeiml/ExplorerTabUtility/issues/1) 的已确认注册缺陷；报告者登录后的具体失败原因尚待日志确认。
+- Shell 初始化、COM 访问及异步回调统一到 WPF STA；初始化失败后清理重试，避免一次失败永久停止初始化。
+- 清理临时导航事件和 COM 引用，限制关闭历史为 100 条，退出后不再处理排队回调。
+- 窗口转换失败保留源窗口，成功确认目标位置后才关闭源窗口；隐藏/恢复保留 Explorer 原有渲染样式。
+- 隐藏托盘图标后的恢复循环使用异步延迟，避免 UI 冻结约 7 秒。
+- 更新源改为本维护仓库，并合并前轮依赖升级；详见 [更新记录](https://github.com/Yafeiml/ExplorerTabUtility/blob/main/CHANGELOG.zh-CN.md)。
 
-## 修复了什么
+## 验证与限制
 
-修复 Windows 关机、注销或系统会话结束时，可能弹出如下错误的问题：
+新增两个框架的 11 项自启动隔离测试，以及托盘 Dispatcher 响应、恢复中断测试；同时保留窗口隐藏/恢复、历史上限、释放回调和依赖渲染回归。测试不写真实启动项或操作真实 Explorer/托盘。
 
-```text
-SystemResourceNotifyWindow: ExplorerTabUtility.exe - 应用程序错误
-应用程序发生异常 未知的软件异常 (0xe0434352)
-```
-
-事件日志中的真实原因是 `.NET ObjectDisposedException`。应用退出过程中，`HookManager.Dispose()` 可能被 `SessionEnding` 和 `Application.Exit` 重复调用，第二次释放 `StaTaskScheduler` 时再次访问已经释放的 `BlockingCollection`，导致未处理异常。
-
-本版本已将相关退出清理路径改为幂等：
-
-- `StaTaskScheduler.Dispose()` 重复调用时安全返回。
-- `HookManager.Dispose()` 只执行一次，并注销 `SessionEnding` 事件。
-- `ExplorerWatcher` 的 Shell、COM、STA 资源清理支持重复调用。
-- 系统关机或显式退出时不再把关闭动作误处理为“隐藏到托盘”。
-- 退出前保存快捷键配置。
-
-## 更新了什么
-
-- 主运行目标升级到 `.NET 10`。
-- 保留 `.NET Framework 4.8.1` 备用构建。
-- `System.Text.Json` 升级到 `10.0.0`。
-- GitHub Actions 构建矩阵更新为 `net10.0-windows`。
-- Inno Setup 安装脚本更新为检测和安装 `.NET 10 Desktop Runtime`。
-- 发布包命名更新为 `Net10.0_FrameworkDependent`。
-
-## 新增内容
-
-- 增加简体中文界面资源。
-- 系统 UI 语言为 `zh-Hans`、`zh-CN`、`zh-SG`、`zh-MY` 时自动加载中文。
-- 主窗口、托盘菜单、快捷键配置、Tab 搜索、确认弹窗、About 页面和枚举下拉项均接入本地化。
-- 新增中文 README、中文更新记录和中文致谢。
-
-## 校验值
-
-- `ExplorerTabUtility_v2.6.0_x64_Net10.0_FrameworkDependent.zip`
-  - SHA256: `60E39AC5659A82BB542AC6B40174A8565900C7F1343B6244167F837CDD0DDC38`
-- `ExplorerTabUtility_v2.6.0_x64_NetFW4.8.1.zip`
-  - SHA256: `AC1981BB4E4EA2BCC684F674C88D49D9ECE4AC8D85722517A2E5B51E1526F31D`
-
-## 致谢
-
-感谢原作者 **w4po / Abd-Alrahman Ghanem** 创建并维护 Explorer Tab Utility。这个维护版保留原项目 MIT License，并在原架构基础上进行小范围修复、本地化和运行时升级。
-
-也感谢以下开源项目：
-
-- H.Hooks
-- Hardcodet.NotifyIcon.Wpf
-- Autoupdater.NET
-- Autoupdater.NET.Extended.Markdown
-- Fody / ConfigureAwait.Fody
-- .NET / WPF / Windows Shell COM APIs
+尚未进行真实注销/登录验证、长期 Shell COM 压力测试或 x86/ARM64 原生运行验证。新窗口转换时可能短暂显示。StartAllBack 增强任务栏的独立菜单残影仍属于兼容性问题，本版本不更改该软件。

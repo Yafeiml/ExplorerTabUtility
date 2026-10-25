@@ -13,8 +13,6 @@ namespace ExplorerTabUtility.WinAPI;
 
 public static class WinApi
 {
-    public const int EVENT_OBJECT_SHOW = 0x8002;
-
     public const int WM_COMMAND = 0x111; // Send a command
 
     public const int SW_SHOWNOACTIVATE = 4; // Show window but not activated
@@ -22,21 +20,11 @@ public static class WinApi
     public const uint SWP_NOSIZE = 0x0001;
     public const uint SWP_NOZORDER = 0x0004;
     public const uint SWP_NOACTIVATE = 0x0010;
-    public const uint SWP_FRAMECHANGED = 0x0020;
     public const uint SWP_SHOWWINDOW = 0x0040;
     public const uint SWP_HIDEWINDOW = 0x0080;
 
     public const int GWL_EXSTYLE = -20; // Extended window style.
-    public const int WS_EX_LAYERED = 0x80000; // Layered window.
-    public const int LWA_ALPHA = 0x2; // Determine the opacity of a layered window
-
     public const uint SIGDN_URL = 0x80068000;
-
-    [DllImport("user32.dll")]
-    public static extern nint SetWinEventHook(uint eventMin, uint eventMax, nint hModWinEventProc, WinEventDelegate lPfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
-
-    [DllImport("user32.dll")]
-    public static extern bool UnhookWinEvent(nint hWinEventHook);
 
     [DllImport("user32.dll")]
     public static extern nint GetParent(nint hWnd);
@@ -76,12 +64,6 @@ public static class WinApi
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern int GetWindowLong(nint hWnd, int nIndex);
-
-    [DllImport("user32.dll")]
-    public static extern int SetWindowLong(nint hWnd, int nIndex, int dwNewLong);
-
-    [DllImport("user32.dll")]
-    public static extern bool SetLayeredWindowAttributes(nint hWnd, uint crKey, byte bAlpha, uint dwFlags);
 
     [DllImport("user32.dll")]
     public static extern uint RealGetWindowClass(nint hwnd, StringBuilder pszType, uint cchType);

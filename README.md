@@ -17,6 +17,12 @@
 > [!IMPORTANT]
 > This application requires Windows 11 (22H2 Build 22621 or later) with the File Explorer Tabs feature.
 
+The v2.6.1 maintenance build keeps Shell operations on the WPF STA, cleans up navigation events on timeout, preserves Explorer composition styles, and closes a source window only after its destination tab opens successfully. Closed history retains the latest 100 entries. The former theme workaround is now the default hiding behavior; a new window may briefly appear during conversion.
+
+Startup registration now creates missing registry keys and accepts both legacy unquoted and quoted executable paths. New entries quote the executable path. Tray recovery uses asynchronous delays so hiding the tray icon does not freeze the UI after Explorer restarts. Update checks use this maintenance repository.
+
+For the local .NET 10 x64 installation, exit the tray app, then run `scripts/Update-Local.ps1` in PowerShell 7. It verifies a staged copy of the published binaries and keeps the complete old installation for rollback. It does not build or restart Explorer. Use full Visual Studio MSBuild for the projects under `Tests` because the app imports COM type libraries.
+
 ## 🤔 Why Explorer Tab Utility?
 
 <div align="center">
@@ -154,13 +160,7 @@ Say goodbye to cluttered desktops with multiple Explorer windows! Explorer Tab U
 
 ## 🚀 Getting Started
 
-1. Download the latest version from the [Releases](https://github.com/w4po/ExplorerTabUtility/releases) page or install it via `winget` or `choco`:
-    ```powershell
-    winget install w4po.ExplorerTabUtility --interactive
-    ```
-    ```powershell
-    choco install explorertabutility --version 2.6.0 --params "/interactive"
-    ```
+1. Download the ZIP for your architecture and runtime from this maintenance repository's [Releases](https://github.com/Yafeiml/ExplorerTabUtility/releases) page, then extract the complete archive. Release archives are unsigned; use the accompanying `SHA256SUMS.txt` to verify the download.
 2. Run the application
 3. Look for the tray icon and you're ready to go!
 

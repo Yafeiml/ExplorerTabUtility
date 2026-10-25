@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net10.0-windows;net481</TargetFrameworks>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../ExplorerTabUtility/ExplorerTabUtility.csproj" />
+  </ItemGroup>
+</Project>

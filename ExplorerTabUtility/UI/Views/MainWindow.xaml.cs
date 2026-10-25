@@ -39,7 +39,6 @@ public partial class MainWindow : Window
         StartHooks();
 
         CbAutoUpdate.IsChecked = SettingsManager.AutoUpdate;
-        CbThemeIssue.IsChecked = SettingsManager.HaveThemeIssue;
         CbHideTrayIcon.IsChecked = SettingsManager.IsTrayIconHidden;
         CbAutoSaveProfiles.IsChecked = SettingsManager.SaveProfilesOnExit;
         CbSaveClosedHistory.IsChecked = SettingsManager.SaveClosedHistory;
@@ -75,8 +74,6 @@ public partial class MainWindow : Window
         CbRestorePreviousWindows.Unchecked += CbRestorePreviousWindows_CheckedChanged;
         CbAutoUpdate.Checked += CbAutoUpdate_CheckedChanged;
         CbAutoUpdate.Unchecked += CbAutoUpdate_CheckedChanged;
-        CbThemeIssue.Checked += CbThemeIssue_CheckedChanged;
-        CbThemeIssue.Unchecked += CbThemeIssue_CheckedChanged;
         CbHideTrayIcon.Checked += CbHideTrayIcon_CheckedChanged;
         CbHideTrayIcon.Unchecked += CbHideTrayIcon_CheckedChanged;
 
@@ -174,10 +171,6 @@ public partial class MainWindow : Window
         SettingsManager.AutoUpdate = CbAutoUpdate.IsChecked ?? false;
     }
 
-    private void CbThemeIssue_CheckedChanged(object? _, RoutedEventArgs __)
-    {
-        SettingsManager.HaveThemeIssue = CbThemeIssue.IsChecked ?? false;
-    }
 
     private void CbSaveClosedHistory_CheckedChanged(object? _, RoutedEventArgs __)
     {

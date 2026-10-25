@@ -3,6 +3,8 @@ using System.Drawing;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Models;
 using ExplorerTabUtility.Hooks;
@@ -11,6 +13,7 @@ using ExplorerTabUtility.UI.Views;
 
 namespace ExplorerTabUtility.Managers;
 
+[Fody.ConfigureAwait(true)]
 public sealed class HookManager
 {
     private readonly Mouse _mouseHook;
@@ -25,7 +28,7 @@ public sealed class HookManager
 
     public HookManager(ProfileManager profileManager)
     {
-        _syncContext = SynchronizationContext.Current!;
+        _syncContext = new System.Windows.Threading.DispatcherSynchronizationContext(System.Windows.Application.Current.Dispatcher);
 
         _windowHook = new ExplorerWatcher();
         _mouseHook = new Mouse(profileManager.GetProfiles());
@@ -47,7 +50,24 @@ public sealed class HookManager
     public void StopWindowHook() => ChangeHookStatus(_windowHook, false);
     public void SetReuseTabs(bool value) => _windowHook.SetReuseTabs(value);
 
-    private async void OnHotKeyProfileTriggered(HotKeyEventArgs e)
+    private void OnHotKeyProfileTriggered(HotKeyEventArgs e)
+    {
+        if (Volatile.Read(ref _disposed) != 0) return;
+        _syncContext.Post(async _ =>
+        {
+            if (Volatile.Read(ref _disposed) != 0) return;
+            try
+            {
+                await ExecuteHotKeyProfile(e);
+            }
+            catch (Exception ex) when (ex is COMException or InvalidComObjectException or ObjectDisposedException)
+            {
+                Debug.WriteLine($"Explorer closed during hotkey action: {ex}");
+            }
+        }, null);
+    }
+
+    private async Task ExecuteHotKeyProfile(HotKeyEventArgs e)
     {
         switch (e.Profile.Action)
         {

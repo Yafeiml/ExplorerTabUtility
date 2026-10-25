@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Controls;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using ExplorerTabUtility.Models;
 using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Managers;
@@ -60,21 +61,20 @@ public partial class SystemTrayIcon : UserControl, IDisposable
         ExitApplication.Command = new RelayCommand(_ => Application.Current.Shutdown());
     }
 
-    private void HookManager_OnShellInitialized()
+    private async void HookManager_OnShellInitialized()
     {
-        // Workaround for hardcodet/wpf-notifyicon bug: repeatedly hide icon when explorer.exe restarts
-        if (TrayIcon.Visibility == Visibility.Visible) return;
-        Helper.DoUntilTimeEnd(HideTrayIcon, 7000, 1000);
-        return;
-        
-        void HideTrayIcon()
+        await KeepTrayIconHiddenAsync(TrayIcon);
+    }
+
+    private async Task KeepTrayIconHiddenAsync(UIElement trayIcon)
+    {
+        // Retry after Explorer restarts without blocking the UI message loop.
+        for (var elapsed = 0; elapsed < 7000; elapsed += 1000)
         {
-            TrayIcon.Dispatcher.BeginInvoke(() =>
-            {
-                if (TrayIcon.Visibility == Visibility.Visible) return;
-                TrayIcon.Visibility = Visibility.Hidden;
-                TrayIcon.Visibility = Visibility.Collapsed;
-            });
+            if (_disposed || trayIcon.Visibility == Visibility.Visible) return;
+            trayIcon.Visibility = Visibility.Hidden;
+            trayIcon.Visibility = Visibility.Collapsed;
+            await Task.Delay(1000).ConfigureAwait(true);
         }
     }
     

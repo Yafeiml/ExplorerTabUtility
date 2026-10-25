@@ -8,11 +8,11 @@
 #define DashPos Pos("-", MyAppVersionWithoutV)
 #define MyAppNumericVersion (DashPos > 0) ? Copy(MyAppVersionWithoutV, 1, DashPos - 1) : MyAppVersionWithoutV
 
-#define MyAppPublisher "w4po"
+#define MyAppPublisher "Yafeiml"
 #define MyAppName "ExplorerTabUtility"
 #define MyAppExeName MyAppName + ".exe"
 #define MyAppRelativePath MyAppName + "\" + MyAppExeName
-#define MyAppURL "https://github.com/w4po/ExplorerTabUtility"
+#define MyAppURL "https://github.com/Yafeiml/ExplorerTabUtility"
 #define DotNet10InstallerUrl "https://aka.ms/dotnet/10.0/windowsdesktop-runtime-win-x64.exe"
 #define DotNet10InstallerUrlX86 "https://aka.ms/dotnet/10.0/windowsdesktop-runtime-win-x86.exe"
 #define DotNet10InstallerUrlArm64 "https://aka.ms/dotnet/10.0/windowsdesktop-runtime-win-arm64.exe"
@@ -87,7 +87,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppRelativePath}"; Task
 
 [Registry]
 ; Add to startup if the startup task is selected
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: "{app}\{#MyAppRelativePath}"; Flags: uninsdeletevalue; Tasks: startupicon
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: """{app}\{#MyAppRelativePath}"""; Flags: uninsdeletevalue; Tasks: startupicon
 ; Set StartupApproved registry entry (enabled = 02 00 00 00 00 00 00 00 00 00 00 00)
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"; ValueType: binary; ValueName: "{#MyAppName}"; ValueData: 02 00 00 00 00 00 00 00 00 00 00 00; Flags: uninsdeletevalue; Tasks: startupicon
 

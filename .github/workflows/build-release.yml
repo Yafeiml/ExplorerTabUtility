@@ -2,15 +2,17 @@ name: Build, Sign and Release
 
 on:
   push:
+    branches: [main]
     tags:
       - 'v*' # Triggers on tags like v1.3.0
+  pull_request:
   workflow_dispatch:
     inputs:
       version:
         description: 'Version string to use (e.g., v1.0.0)'
         required: true
         type: string
-        default: 'v2.4.0-test'
+        default: 'v2.6.1'
 
 env:
   PROJECT_NAME: ExplorerTabUtility
@@ -20,8 +22,37 @@ env:
   VERSION: ${{ github.event_name == 'push' && github.ref_name || inputs.version }}
 
 jobs:
+  validate:
+    runs-on: windows-2025-vs2026
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: microsoft/setup-msbuild@v3
+      - uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: 10.0.x
+      - name: Build and run regression checks
+        shell: pwsh
+        run: |
+          msbuild Tests/ExplorerTabUtility.RegressionTests.csproj /restore /p:Configuration=Release /p:TargetFramework=net10.0-windows /nologo /verbosity:minimal
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          dotnet Tests/bin/Release/net10.0-windows/ExplorerTabUtility.RegressionTests.dll
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          foreach ($framework in @('net10.0-windows', 'net481')) {
+            foreach ($project in @('StartupRegression', 'DependencySmoke')) {
+              $projectFile = Get-ChildItem "Tests/$project/*.csproj" | Select-Object -First 1
+              msbuild $projectFile.FullName /restore /p:Configuration=Release /p:TargetFramework=$framework /nologo /verbosity:minimal
+              if ($LASTEXITCODE) { exit $LASTEXITCODE }
+              $output = "Tests/$project/bin/Release/$framework/$($projectFile.BaseName)"
+              if ($framework -eq 'net481') { & "$output.exe" } else { dotnet "$output.dll" }
+              if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            }
+          }
+          & ./Tests/Update-Local.Tests.ps1
+
   build:
-    runs-on: windows-latest
+    needs: validate
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: windows-2025-vs2026
     strategy:
       matrix:
         framework: [ 'net10.0-windows', 'net481' ]
@@ -30,15 +61,13 @@ jobs:
       max-parallel: 6
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup MSBuild Environments
-        uses: microsoft/setup-msbuild@v2
-        with:
-          vs-version: '17.0'  # Visual Studio 2022
+        uses: microsoft/setup-msbuild@v3
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v6.0.0
         with:
           dotnet-version: 10.0.x
 
@@ -65,37 +94,42 @@ jobs:
           Compress-Archive -Path "$tempDir/*" -DestinationPath $zipName
           
           # Clean up temporary directory
-          Remove-Item -Path $tempDir -Recurse -Force
+          $tempPath = (Resolve-Path -LiteralPath $tempDir).Path
+          if (-not $tempPath.StartsWith($env:GITHUB_WORKSPACE + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Temporary artifact directory is outside the workspace.'
+          }
+          Remove-Item -LiteralPath $tempPath -Recurse -Force
           
           echo "zipName=$zipName" >> $env:GITHUB_OUTPUT
         shell: pwsh
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ${{ steps.zip_artifacts.outputs.zipName }}
           path: ${{ steps.zip_artifacts.outputs.zipName }}
 
   sign-artifacts:
     needs: build
+    if: github.repository == 'w4po/ExplorerTabUtility'
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.2
         with:
           path: ./artifacts
           merge-multiple: true
 
       - name: Upload signing bundle to GitHub
         id: upload-unsigned-bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: unsigned-bundle
           path: ./artifacts/*.zip
 
       - name: Submit bundle for signing
         id: submit-signing
-        uses: signpath/github-action-submit-signing-request@v1.1
+        uses: signpath/github-action-submit-signing-request@v2
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ env.SIGNPATH_ORG_ID }}
@@ -109,7 +143,7 @@ jobs:
             version: "${{ env.VERSION }}"
 
       - name: Upload signed artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: signed-artifacts
           path: ./signed-output/*.zip
@@ -119,10 +153,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Download Signed Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.2
         with:
           name: signed-artifacts
           path: artifacts
@@ -142,14 +176,14 @@ jobs:
 
       - name: Upload unsigned installer
         id: upload-unsigned-installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ${{ env.PROJECT_NAME }}_${{ env.VERSION }}_Setup-unsigned
           path: artifacts/*.exe
 
       - name: Submit installer for signing
         id: submit-installer-signing
-        uses: signpath/github-action-submit-signing-request@v1.1
+        uses: signpath/github-action-submit-signing-request@v2
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ env.SIGNPATH_ORG_ID }}
@@ -163,7 +197,7 @@ jobs:
             version: "${{ env.VERSION }}"
 
       - name: Upload signed installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: signed-installer
           path: ./signed-installer/*.exe
@@ -176,23 +210,23 @@ jobs:
       pull-requests: read   # Required to read PRs for changelog generation
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Download Signed Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.2
         with:
           name: signed-artifacts
           path: release-artifacts
 
       - name: Download Signed Installer
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.2
         with:
           name: signed-installer
           path: release-artifacts
 
       - name: Generate Changelog
         id: generate_changelog
-        uses: mikepenz/release-changelog-builder-action@v5
+        uses: mikepenz/release-changelog-builder-action@v6.4.0
         with:
           mode: "COMMIT"
           configurationJson: |
@@ -223,7 +257,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3.0.3
         with:
           tag_name: ${{ env.VERSION }}
           name: ${{ env.PROJECT_NAME }} ${{ env.VERSION }}
@@ -235,3 +269,35 @@ jobs:
           files: |
             release-artifacts/*.zip
             release-artifacts/*.exe
+
+  create-maintenance-release:
+    needs: build
+    if: github.repository != 'w4po/ExplorerTabUtility' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+    runs-on: windows-2025-vs2026
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: ExplorerTabUtility_*.zip
+          path: release-artifacts
+          merge-multiple: true
+      - name: Record archive checksums
+        shell: pwsh
+        run: |
+          $archives = @(Get-ChildItem release-artifacts/*.zip | Sort-Object Name)
+          if ($archives.Count -ne 6) { throw 'Expected all six framework/architecture archives.' }
+          $archives | ForEach-Object {
+            (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.Name
+          } | Set-Content release-artifacts/SHA256SUMS.txt -Encoding ascii
+      - name: Prepare maintenance release
+        uses: softprops/action-gh-release@v3.0.3
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: ExplorerTabUtility ${{ env.VERSION }} 中文维护版
+          draft: true
+          body_path: GITHUB_RELEASE.zh-CN.md
+          files: |
+            release-artifacts/*.zip
+            release-artifacts/SHA256SUMS.txt

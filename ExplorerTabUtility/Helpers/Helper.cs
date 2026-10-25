@@ -22,6 +22,7 @@ public static class Helper
     private static int _lastCtrlShiftCheckAt;
     private static bool _lastCtrlShiftCheckValue;
     public static readonly ConcurrentDictionary<nint, RECT?> HiddenWindows = new();
+    private static readonly object HiddenWindowsLock = new();
 
     public static Task DoDelayedBackgroundAsync(Action action, int delayMs = 2_000, CancellationToken cancellationToken = default)
     {
@@ -126,6 +127,7 @@ public static class Helper
     {
         return DoUntilConditionAsync(action, static () => false, timeMs, sleepMs, cancellationToken);
     }
+    [Fody.ConfigureAwait(true)]
     public static async Task DoUntilConditionAsync(Func<Task> action, Func<bool> predicate, int timeMs = 500, int sleepMs = 20, CancellationToken cancellationToken = default)
     {
         var startTicks = Stopwatch.GetTimestamp();
@@ -139,6 +141,7 @@ public static class Helper
             await Task.Delay(sleepMs);
         }
     }
+    [Fody.ConfigureAwait(true)]
     public static async Task<T> DoUntilConditionAsync<T>(Func<T> action, Predicate<T> predicate, int timeMs = 500, int sleepMs = 20, CancellationToken cancellationToken = default)
     {
         var startTicks = Stopwatch.GetTimestamp();
@@ -154,6 +157,7 @@ public static class Helper
 
         return action();
     }
+    [Fody.ConfigureAwait(true)]
     public static async Task<T> DoUntilConditionAsync<T>(Func<Task<T>> action, Predicate<T> predicate, int timeMs = 500, int sleepMs = 20, CancellationToken cancellationToken = default)
     {
         var startTicks = Stopwatch.GetTimestamp();
@@ -265,11 +269,21 @@ public static class Helper
 
     public static bool IsExplorerEmptySpace(Point point)
     {
-        var hr = WinApi.AccessibleObjectFromPoint(point, out var accObj, out var childId);
-        if (hr != 0 || childId is not 0) return false;
-
-        var role = accObj.get_accRole(0);
-        return role is 0x21; //IAccessible.Role:list (ROLE_SYSTEM_LIST 0x21)
+        IAccessible? accObj = null;
+        try
+        {
+            var hr = WinApi.AccessibleObjectFromPoint(point, out accObj, out var childId);
+            return hr == 0 && childId is 0 && accObj.get_accRole(0) is 0x21; // ROLE_SYSTEM_LIST
+        }
+        catch (COMException)
+        {
+            return false;
+        }
+        finally
+        {
+            if (accObj != null && Marshal.IsComObject(accObj))
+                Marshal.ReleaseComObject(accObj);
+        }
     }
     public static bool IsFileExplorerTab(nint tab)
     {
@@ -363,63 +377,50 @@ public static class Helper
                 if (proc.StartTime < bestStart)
                 {
                     bestStart = proc.StartTime;
+                    best?.Dispose();
                     best = proc;
                 }
+                else
+                    proc.Dispose();
             }
             catch { /* The Process might have terminated */ }
         }
         return best;
     }
     
-    public static void UpdateWindowLayered(nint hWnd, bool remove)
+    public static void HideWindow(nint hWnd)
     {
-        var exStyle = WinApi.GetWindowLong(hWnd, WinApi.GWL_EXSTYLE);
-        var isLayered = (exStyle & WinApi.WS_EX_LAYERED) != 0;
-        
-        if (remove && isLayered) // Remove
-            WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, exStyle & ~WinApi.WS_EX_LAYERED);
-        
-        if (!remove && !isLayered) // Add
-            WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, exStyle | WinApi.WS_EX_LAYERED);
-    }
-    public static void HideWindow(nint hWnd, bool keepTheme = false)
-    {
-        HiddenWindows.GetOrAdd(hWnd, static (hWnd, keepTheme) =>
+        lock (HiddenWindowsLock)
         {
-            if (keepTheme)
-            {
-                WinApi.GetWindowRect(hWnd, out var originalPos);
-                HiddenWindows[hWnd] = originalPos;
+            if (!IsFileExplorerWindow(hWnd) || HiddenWindows.ContainsKey(hWnd) ||
+                !WinApi.GetWindowRect(hWnd, out var originalPos)) return;
 
-                // Move it off-screen
-                const uint flags = WinApi.SWP_HIDEWINDOW | WinApi.SWP_NOSIZE | WinApi.SWP_NOZORDER | WinApi.SWP_NOACTIVATE | WinApi.SWP_FRAMECHANGED;
-                WinApi.SetWindowPos(hWnd, 0, -32_000, -32_000, 0, 0, flags);
-                return originalPos;
-            }
-
-            // Set the transparency (alpha value) of the window (0 = transparent, 255 = opaque)
-            UpdateWindowLayered(hWnd, remove: false);
-            WinApi.SetLayeredWindowAttributes(hWnd, 0, 0, WinApi.LWA_ALPHA);
-            return null;
-        }, keepTheme);
+            // Preserve Explorer's composition styles and the position for failure recovery.
+            HiddenWindows[hWnd] = originalPos;
+            const uint flags = WinApi.SWP_HIDEWINDOW | WinApi.SWP_NOSIZE | WinApi.SWP_NOZORDER | WinApi.SWP_NOACTIVATE;
+            if (!WinApi.SetWindowPos(hWnd, 0, -32_000, -32_000, 0, 0, flags))
+                HiddenWindows.TryRemove(hWnd, out _);
+        }
     }
     public static bool ShowWindow(nint hWnd, bool removeCache)
     {
-        if (!HiddenWindows.TryGetValue(hWnd, out var originalPos))
-            return false;
-
-        if (removeCache)
-            HiddenWindows.TryRemove(hWnd, out _);
-
-        if (originalPos != null) // keep theme
+        lock (HiddenWindowsLock)
         {
-            const uint flags = WinApi.SWP_SHOWWINDOW | WinApi.SWP_NOSIZE | WinApi.SWP_NOZORDER | WinApi.SWP_NOACTIVATE | WinApi.SWP_FRAMECHANGED;
-            WinApi.SetWindowPos(hWnd, 0, originalPos.Value.Left, originalPos.Value.Top, 0, 0, flags);
-            return true;
-        }
+            if (!HiddenWindows.TryGetValue(hWnd, out var originalPos) || originalPos == null)
+                return false;
 
-        WinApi.SetLayeredWindowAttributes(hWnd, 0, 255, WinApi.LWA_ALPHA);
-        return true;
+            if (!IsFileExplorerWindow(hWnd))
+            {
+                HiddenWindows.TryRemove(hWnd, out _);
+                return false;
+            }
+
+            const uint flags = WinApi.SWP_SHOWWINDOW | WinApi.SWP_NOSIZE | WinApi.SWP_NOZORDER | WinApi.SWP_NOACTIVATE;
+            var restored = WinApi.SetWindowPos(hWnd, 0, originalPos.Value.Left, originalPos.Value.Top, 0, 0, flags);
+            if (restored && removeCache)
+                HiddenWindows.TryRemove(hWnd, out _);
+            return restored;
+        }
     }
 
     public static bool IsCtrlShiftDown()

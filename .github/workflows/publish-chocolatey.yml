@@ -30,17 +30,18 @@ on:
 
 jobs:
   publish:
+    if: github.repository == 'w4po/ExplorerTabUtility' || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     env:
       CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
     steps:
       - name: Install chocolatey
-        uses: crazy-max/ghaction-chocolatey@v3
+        uses: crazy-max/ghaction-chocolatey@v4.1.0
         with:
           args: -v
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Create and push package
         working-directory: ${{ github.workspace }}/packages/chocolatey

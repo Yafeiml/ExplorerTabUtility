@@ -4,9 +4,10 @@ on:
     types: [released]
 jobs:
   publish:
+    if: github.repository == 'w4po/ExplorerTabUtility'
     runs-on: windows-latest
     steps:
-      - uses: vedantmgoyal9/winget-releaser@main
+      - uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: ${{ github.repository_owner }}.${{ github.event.repository.name }}
           token: ${{ secrets.WINGET_TOKEN }}

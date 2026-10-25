@@ -3,11 +3,11 @@ using SHDocVw;
 using System;
 using System.Linq;
 using System.Windows;
+using System.Windows.Threading;
 using System.Threading;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using ExplorerTabUtility.Helpers;
 using ExplorerTabUtility.Interop;
@@ -21,6 +21,7 @@ namespace ExplorerTabUtility.Hooks;
 
 using WindowEntry = DualKeyEntry<InternetExplorer, nint?, WindowInfo>;
 
+[Fody.ConfigureAwait(true)]
 public class ExplorerWatcher : IHook
 {
     private static bool _instanceRunning;
@@ -28,9 +29,8 @@ public class ExplorerWatcher : IHook
 
     private ShellWindows _shellWindows = null!;
     private ShellPathComparer _shellPathComparer = null!;
-    private StaTaskScheduler _staTaskScheduler = null!;
+    private readonly Dispatcher _dispatcher = Application.Current.Dispatcher;
     private nint _mainWindowHandle;
-    private readonly ConcurrentDictionary<nint, byte> _processedHWnds = new();
     private readonly DualKeyDictionary<InternetExplorer, nint?, WindowInfo> _windowEntryDict = [];
     private readonly List<WindowRecord> _closedWindows = new();
     private readonly object _windowEntryDictLock = new(), _closedWindowsLock = new(), _processLock = new();
@@ -40,10 +40,9 @@ public class ExplorerWatcher : IHook
     private int _mainExplorerProcessId;
     private Timer? _explorerCheckTimer;
     private bool _shellObjectsInitialized;
+    private int _shellGeneration;
     private int _disposed;
 
-    private nint _eventObjectShowHookId;
-    private WinEventDelegate? _eventObjectShowHookCallback;
     private DShellWindowsEvents_WindowRegisteredEventHandler? _windowRegisteredHandler;
 
     private string _defaultLocation = null!;
@@ -82,14 +81,29 @@ public class ExplorerWatcher : IHook
             _closedWindows.Clear();
     }
 
+    private void AddClosedWindow(WindowRecord window)
+    {
+        lock (_closedWindowsLock)
+        {
+            _closedWindows.Add(window);
+            if (_closedWindows.Count > 100)
+                _closedWindows.RemoveRange(0, _closedWindows.Count - 100);
+        }
+    }
+
     public IReadOnlyCollection<WindowRecord> GetWindows()
     {
         var result = new List<WindowRecord>();
         
         // Add open windows
+        InternetExplorer[] windows;
         lock (_windowEntryDictLock)
-            result.AddRange(
-                _windowEntryDict.Keys.Select(ie => new WindowRecord(GetLocation(ie), new IntPtr(ie.HWND), GetSelectedItems(ie), ie.LocationName)));
+            windows = _windowEntryDict.Keys.ToArray();
+        foreach (var window in windows)
+        {
+            try { result.Add(new WindowRecord(GetLocation(window), new IntPtr(window.HWND), GetSelectedItems(window), window.LocationName)); }
+            catch (COMException) { /* A tab can close while its COM properties are read. */ }
+        }
         
         // Add closed windows in reverse order (last closed on top)
         lock (_closedWindowsLock)
@@ -118,7 +132,7 @@ public class ExplorerWatcher : IHook
             targetPidl = _shellPathComparer.GetPidlFromPath(targetPath);
             if (targetPidl == 0) return 0;
 
-            foreach (var (window, windowInfo, tabHandle) in _windowEntryDict)
+            foreach (var (window, windowInfo, tabHandle) in ((IEnumerable<WindowEntry>)_windowEntryDict).ToArray())
             {
                 // Make sure it is not the newly created window
                 if (!Helper.IsTimeUp(windowInfo.CreatedAt, 2_000) || !tabHandle.HasValue || tabHandle.Value == 0)
@@ -177,7 +191,7 @@ public class ExplorerWatcher : IHook
 
         if (windowHandle == 0)
         {
-            await OpenNewWindowWithSelection(new WindowRecord(string.Empty), lockToOpenWindows);
+            await OpenNewWindowWithSelection(new WindowRecord(string.Empty), lockToOpenWindows: lockToOpenWindows);
             return;
         }
 
@@ -318,28 +332,13 @@ public class ExplorerWatcher : IHook
         }
     }
 
-    private void PreventWindowHiding(nint hWnd)
-    {
-        if (_processedHWnds.TryAdd(hWnd, 0))
-        {
-            // Schedule removal after a short delay
-            _ = Task.Delay(7_000).ContinueWith(t => _processedHWnds.TryRemove(hWnd, out _), TaskScheduler.Default);
-        }
-    }
-    private void OnWindowShown(nint hWinEventHook, uint eventType, nint hWnd, int idObject, int idChild, uint dwEventThread, uint dWmsEventTime)
-    {
-        if (!_isForcingTabs || idObject != 0 || idChild != 0) return;
-        
-        // Check if the hWnd was processed by OnShellWindowRegistered
-        if (_processedHWnds.TryRemove(hWnd, out _)) return;
-        
-        if (!WinApi.IsWindowHasClassName(hWnd, "CabinetWClass")) return;
-
-        if (_windowEntryDict.Count < 2 || Helper.IsCtrlShiftDown()) return;
-        Helper.HideWindow(hWnd, SettingsManager.HaveThemeIssue);
-    }
     private InternetExplorer? GetRecentlyCreatedWindow(out WindowInfo? windowInfo)
     {
+        if (!_shellObjectsInitialized || Volatile.Read(ref _disposed) != 0)
+        {
+            windowInfo = null;
+            return null;
+        }
         // When a new window is registered, it's typically the last in the collection
         var count = _shellWindows.Count;
         for (var i = count - 1; i >= 0; i--)
@@ -349,15 +348,18 @@ public class ExplorerWatcher : IHook
             lock (_windowEntryDictLock)
             {
                 if (_windowEntryDict.Keys.Contains(window)) continue;
-                if (window.GetProperty("seenBefore") is not null) continue;
-                window.PutProperty("seenBefore", true);
+                try
+                {
+                    if (GetLocation(window).StartsWith("shell:::{26EE0668-A00A-44D7-9371-BEB064C98683}")) continue;
+                }
+                catch (COMException) { continue; }
 
-                windowInfo = new WindowInfo();
+                windowInfo = new WindowInfo { Handle = new IntPtr(window.HWND) };
                 _windowEntryDict.Add(window, windowInfo);
 
                 if (_windowEntryDict.Count == 1)
                 {
-                    _mainWindowHandle = new IntPtr(window.HWND);
+                    _mainWindowHandle = windowInfo.Handle;
 
                     if (SettingsManager.RestorePreviousWindows && _closedWindows.Any(w => w.Restore))
                         _ = RestorePreviousWindows();
@@ -372,23 +374,37 @@ public class ExplorerWatcher : IHook
     }
     private async void OnShellWindowRegistered(int __)
     {
+        if (!_shellObjectsInitialized || Volatile.Read(ref _disposed) != 0) return;
+        if (!_dispatcher.CheckAccess())
+        {
+            if (!_dispatcher.HasShutdownStarted)
+                _ = _dispatcher.BeginInvoke(new Action(() => OnShellWindowRegistered(__)));
+            return;
+        }
+        var generation = _shellGeneration;
+
         var showAgain = true;
         nint hWnd = 0;
+        InternetExplorer? registeredWindow = null;
+        WindowInfo? registeredInfo = null;
         try
         {
             var shouldOpenAsWindow = Helper.IsCtrlShiftDown();
 
             WindowInfo windowInfo = null!;
-            var window = await Helper.DoUntilNotDefaultAsync(() => GetRecentlyCreatedWindow(out windowInfo!), 2_500, 70);
-            if (window == null) return;
+            var window = await Helper.DoUntilNotDefaultAsync(
+                () => generation == _shellGeneration ? GetRecentlyCreatedWindow(out windowInfo!) : null, 2_500, 70);
+            if (window == null || generation != _shellGeneration || !_windowEntryDict.ContainsKey(window)) return;
+            registeredWindow = window;
+            registeredInfo = windowInfo;
 
             _ = GetTabHandle(window);
 
             hWnd = new IntPtr(window.HWND);
+            windowInfo.Handle = hWnd;
             
             if (shouldOpenAsWindow)
             {
-                PreventWindowHiding(hWnd);
                 HookWindowEvents(window, windowInfo);
                 return;
             }
@@ -398,7 +414,6 @@ public class ExplorerWatcher : IHook
             //Control Panel
             if (location.StartsWith("shell:::{26EE0668-A00A-44D7-9371-BEB064C98683}"))
             {
-                PreventWindowHiding(hWnd);
                 RemoveWindowAndUnhookEvents(window, windowInfo);
                 return;
             }
@@ -410,9 +425,7 @@ public class ExplorerWatcher : IHook
                                     Helper.GetAllExplorerTabs(hWnd).Take(2).Count() == 1;
 
             if (shouldReopenAsTab)
-                Helper.HideWindow(hWnd, SettingsManager.HaveThemeIssue);
-            else
-                PreventWindowHiding(hWnd);
+                Helper.HideWindow(hWnd);
 
             // Check if it is a detached tab
             var isRecentlyClosed = TryGetRecentlyClosedWindow(location, out var closedWindow);
@@ -423,37 +436,47 @@ public class ExplorerWatcher : IHook
 
             if (shouldReopenAsTab)
             {
-                showAgain = false;
+                var targetWindow = GetMainWindowHWnd(hWnd);
+                if (!await OpenTabNavigateWithSelection(new WindowRecord(location, hWnd, GetSelectedItems(window)), targetWindow, excludedWindow: hWnd))
+                {
+                    if (generation == _shellGeneration && _windowEntryDict.ContainsKey(window))
+                        HookWindowEvents(window, windowInfo);
+                    return;
+                }
 
-                _ = OpenTabNavigateWithSelection(new WindowRecord(location, hWnd, GetSelectedItems(window)), _mainWindowHandle);
-
-                window.Quit();
-                RemoveWindowAndUnhookEvents(window, windowInfo);
+                if (generation == _shellGeneration && _windowEntryDict.ContainsKey(window))
+                {
+                    window.Quit();
+                    showAgain = false;
+                    RemoveWindowAndUnhookEvents(window, windowInfo);
+                }
                 return;
             }
 
             // OnQuit might fire after ShellWindowRegistered in case of reattached tab (and there were selected files)
             if (!isRecentlyClosed)
             {
-                isRecentlyClosed = await Helper.DoUntilNotDefaultAsync(() => TryGetRecentlyClosedWindow(location, out closedWindow), 700, 50);
-                if (isRecentlyClosed)
+                isRecentlyClosed = await Helper.DoUntilNotDefaultAsync(
+                    () => generation == _shellGeneration && TryGetRecentlyClosedWindow(location, out closedWindow), 700, 50);
+                if (isRecentlyClosed && generation == _shellGeneration && _windowEntryDict.ContainsKey(window))
                     SelectItems(window, closedWindow!.SelectedItems);
             }
 
-            HookWindowEvents(window, windowInfo);
+            if (generation == _shellGeneration && _windowEntryDict.ContainsKey(window))
+                HookWindowEvents(window, windowInfo);
         }
-        catch {/**/}
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Shell window registration failed: {ex}");
+            if (registeredWindow != null && registeredInfo != null && generation == _shellGeneration &&
+                _windowEntryDict.ContainsKey(registeredWindow))
+                HookWindowEvents(registeredWindow, registeredInfo);
+        }
         finally
         {
-            if (showAgain)
+            if (showAgain && hWnd != 0 && generation == _shellGeneration)
             {
-                await Helper.DoUntilNotDefaultAsync(() => Helper.ShowWindow(hWnd, removeCache: false), 1_500, 200);
-
-                if (!SettingsManager.HaveThemeIssue)
-                    Helper.UpdateWindowLayered(hWnd, remove: true);
-
-                // OnWindowShown might fire after ShellWindowRegistered and hide it again, keep the cache, wait a bit, then remove it.
-                _ = Task.Delay(3000).ContinueWith(t => Helper.HiddenWindows.TryRemove(hWnd, out _), TaskScheduler.Default);
+                Helper.ShowWindow(hWnd, removeCache: true);
             }
         }
     }
@@ -462,27 +485,32 @@ public class ExplorerWatcher : IHook
         // Create strongly-typed handlers so we can remove them later
         windowInfo.OnQuitHandler = () =>
         {
-            var location = windowInfo.Location ?? GetLocation(window);
-            var locationName = windowInfo.Name ?? window.LocationName;
-            var windowRecord = new WindowRecord(location, new IntPtr(window.HWND), name: locationName);
-            lock (_closedWindowsLock) _closedWindows.Add(windowRecord);
-
-            // Home, This PC, etc
-            if (location == _defaultLocation)
+            if (!_shellObjectsInitialized || Volatile.Read(ref _disposed) != 0 || !_windowEntryDict.ContainsKey(window)) return;
+            try
             {
-                RemoveWindowAndUnhookEvents(window, windowInfo);
-                return;
-            }
+                var location = windowInfo.Location ?? GetLocation(window);
+                var locationName = windowInfo.Name ?? window.LocationName;
+                var windowRecord = new WindowRecord(location, new IntPtr(window.HWND), name: locationName);
+                AddClosedWindow(windowRecord);
 
-            windowRecord.SelectedItems = GetSelectedItems(window);
-            RemoveWindowAndUnhookEvents(window, windowInfo);
+                // Home, This PC, etc
+                if (location != _defaultLocation)
+                    windowRecord.SelectedItems = GetSelectedItems(window);
+            }
+            catch (Exception ex) { Debug.WriteLine($"Closed shell window could not be read: {ex}"); }
+            finally { RemoveWindowAndUnhookEvents(window, windowInfo); }
         };
 
         if (SettingsManager.RestorePreviousWindows)
             windowInfo.OnNavigateHandler = (object _, ref object _) =>
             {
-                windowInfo.Location = GetLocation(window);
-                windowInfo.Name = window.LocationName;
+                if (!_shellObjectsInitialized || Volatile.Read(ref _disposed) != 0 || !_windowEntryDict.ContainsKey(window)) return;
+                try
+                {
+                    windowInfo.Location = GetLocation(window);
+                    windowInfo.Name = window.LocationName;
+                }
+                catch (Exception ex) { Debug.WriteLine($"Shell navigation could not be read: {ex}"); }
             };
 
         try
@@ -501,27 +529,26 @@ public class ExplorerWatcher : IHook
         }
         catch
         {
-            lock (_windowEntryDictLock)
-                _windowEntryDict.Remove(window);
+            RemoveWindowAndUnhookEvents(window, windowInfo);
         }
     }
-    private void RemoveWindowAndUnhookEvents(InternetExplorer window, WindowInfo windowInfo, bool useLock = true)
+    private void RemoveWindowAndUnhookEvents(InternetExplorer window, WindowInfo windowInfo)
     {
-        // Unsubscribe
-        if (windowInfo.OnQuitHandler != null) window.OnQuit -= windowInfo.OnQuitHandler;
-        if (windowInfo.OnNavigateHandler != null) window.NavigateComplete2 -= windowInfo.OnNavigateHandler;
-
-        // Remove from dictionary
-        if (useLock)
+        lock (_windowEntryDictLock)
         {
-            lock (_windowEntryDictLock)
-                _windowEntryDict.Remove(window);
+            if (!_windowEntryDict.Remove(window)) return;
+            if (windowInfo.Handle != 0 && !_windowEntryDict.Values.Any(info => info.Handle == windowInfo.Handle))
+            {
+                Helper.ShowWindow(windowInfo.Handle, removeCache: true);
+            }
         }
-        else
-            _windowEntryDict.Remove(window);
 
-        // Finally, release the COM reference for this InternetExplorer instance
-        Marshal.ReleaseComObject(window);
+        if (windowInfo.OnQuitHandler != null)
+            SafeRun(() => window.OnQuit -= windowInfo.OnQuitHandler);
+        if (windowInfo.OnNavigateHandler != null)
+            SafeRun(() => window.NavigateComplete2 -= windowInfo.OnNavigateHandler);
+
+        // Async callbacks may still hold this shared RCW; let the runtime release it.
     }
 
     private async Task RestorePreviousWindows()
@@ -532,7 +559,10 @@ public class ExplorerWatcher : IHook
             MessageBoxButton.YesNo,
             MessageBoxImage.Question));
 
-        foreach (var record in _closedWindows.Where(record => record.Restore))
+        WindowRecord[] records;
+        lock (_closedWindowsLock)
+            records = _closedWindows.Where(record => record.Restore).ToArray();
+        foreach (var record in records)
         {
             record.Restore = false;
             
@@ -548,8 +578,7 @@ public class ExplorerWatcher : IHook
 
         try
         {
-            lock (_closedWindowsLock)
-                _closedWindows.Add(windowToOpen);
+            AddClosedWindow(windowToOpen);
 
             var hasSelection = windowToOpen.SelectedItems?.Length > 0;
 
@@ -591,20 +620,25 @@ public class ExplorerWatcher : IHook
                 _toOpenWindowsLock.Release();
         }
     }
-    private async Task OpenTabNavigateWithSelection(WindowRecord windowToOpen, nint windowHandle = 0, bool isDuplicate = false, bool forceTabReuse = false)
+    private async Task<bool> OpenTabNavigateWithSelection(WindowRecord windowToOpen, nint windowHandle = 0, bool isDuplicate = false, bool forceTabReuse = false, nint excludedWindow = 0)
     {
         await _toOpenWindowsLock.WaitAsync();
         try
         {
+            if (!_shellObjectsInitialized || Volatile.Read(ref _disposed) != 0) return false;
+            var generation = _shellGeneration;
+
             if ((_reuseTabs || forceTabReuse) && !isDuplicate && _windowEntryDict.Count > 0)
             {
                 var existingTab = SearchForTab(windowToOpen.Location);
-                if (existingTab != 0)
+                if (existingTab != 0 && WinApi.GetParent(existingTab) != excludedWindow)
                 {
                     windowHandle = WinApi.GetParent(existingTab);
                     await SelectTabByHandle(windowHandle, existingTab);
+                    if (generation != _shellGeneration || !Helper.IsFileExplorerWindow(windowHandle) ||
+                        GetWindowByTabHandle(existingTab) == null) return false;
                     WinApi.RestoreWindowToForeground(windowHandle);
-                    return;
+                    return true;
                 }
             }
 
@@ -612,11 +646,12 @@ public class ExplorerWatcher : IHook
             var mainWindowHWnd = Helper.IsFileExplorerWindow(windowHandle)
                 ? windowHandle
                 : GetMainWindowHWnd(windowToOpen.Handle);
+            if (excludedWindow != 0 && mainWindowHWnd == excludedWindow) return false;
 
             if (mainWindowHWnd == 0)
             {
                 await OpenNewWindowWithSelection(windowToOpen, lockToOpenWindows: false);
-                return;
+                return true;
             }
 
             // Store the current tabs
@@ -627,36 +662,46 @@ public class ExplorerWatcher : IHook
 
             // Wait for the new tab
             var newTabHandle = await Helper.ListenForNewExplorerTabAsync(mainWindowHWnd, currentTabs, 2_000);
-            if (newTabHandle == 0) return;
+            if (newTabHandle == 0 || generation != _shellGeneration || !_shellObjectsInitialized) return false;
 
             // Get the window object
             var window = await Helper.DoUntilNotDefaultAsync(() => GetWindowByTabHandle(newTabHandle), 2_000, 50);
-            if (window == null) return;
+            if (window == null || generation != _shellGeneration || !_windowEntryDict.ContainsKey(window)) return false;
 
-            var tcs = new TaskCompletionSource<bool>();
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             DWebBrowserEvents2_NavigateComplete2EventHandler navigateHandler = null!;
             navigateHandler = (object _, ref object _) =>
             {
-                window.NavigateComplete2 -= navigateHandler;
-                tcs.TrySetResult(true);
-                SelectItems(window, windowToOpen.SelectedItems);
+                if (generation != _shellGeneration || !_windowEntryDict.ContainsKey(window)) return;
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(windowToOpen.Location) &&
+                        !_shellPathComparer.IsEquivalent(windowToOpen.Location, GetLocation(window))) return;
+                    SelectItems(window, windowToOpen.SelectedItems);
+                    tcs.TrySetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Shell selection failed: {ex}");
+                    tcs.TrySetResult(false);
+                }
             };
 
             window.NavigateComplete2 += navigateHandler;
             try
             {
                 await Navigate(window, windowToOpen.Location);
+                WinApi.RestoreWindowToForeground(mainWindowHWnd);
+                await Task.WhenAny(tcs.Task, Task.Delay(5000));
+                return tcs.Task.IsCompleted && await tcs.Task && generation == _shellGeneration &&
+                    _windowEntryDict.ContainsKey(window) && Helper.IsFileExplorerWindow(mainWindowHWnd);
             }
-            catch
+            catch (Exception ex)
             {
-                window.NavigateComplete2 -= navigateHandler;
-                tcs.TrySetResult(false);
+                Debug.WriteLine($"Shell tab navigation failed: {ex}");
+                return false;
             }
-
-            WinApi.RestoreWindowToForeground(mainWindowHWnd);
-
-            var timeoutTask = Task.Delay(5000);
-            await Task.WhenAny(tcs.Task, timeoutTask);
+            finally { SafeRun(() => window.NavigateComplete2 -= navigateHandler); }
         }
         finally
         {
@@ -692,7 +737,7 @@ public class ExplorerWatcher : IHook
     }
     private nint GetMainWindowHWnd(nint otherThan)
     {
-        if (Helper.IsFileExplorerWindow(_mainWindowHandle))
+        if (_mainWindowHandle != otherThan && Helper.IsFileExplorerWindow(_mainWindowHandle))
             return _mainWindowHandle;
 
         var allWindows = WinApi.FindAllWindowsEx("CabinetWClass");
@@ -713,29 +758,26 @@ public class ExplorerWatcher : IHook
         if (_windowEntryDict.TryGetValue(window, out WindowEntry entry) && entry.OptionalKey is { } handle and > 0)
             return Task.FromResult(handle);
 
-        // Schedule the operation on STA
-        return RunInStaThread(() =>
+        // ReSharper disable once SuspiciousTypeConversion.Global
+        if (window is not Interop.IServiceProvider sp) return Task.FromResult<nint>(0);
+
+        var hr = sp.QueryService(ref _shellBrowserGuid, ref _shellBrowserGuid, out var shellBrowser);
+        if (hr < 0 || shellBrowser == null) return Task.FromResult<nint>(0);
+
+        try
         {
-            // ReSharper disable once SuspiciousTypeConversion.Global
-            if (window is not Interop.IServiceProvider sp) return 0;
+            hr = shellBrowser.GetWindow(out var hWnd);
 
-            sp.QueryService(ref _shellBrowserGuid, ref _shellBrowserGuid, out var shellBrowser);
-            if (shellBrowser == null) return 0;
+            if (hr >= 0 && hWnd != 0 && _windowEntryDict.ContainsKey(window))
+                _windowEntryDict.UpdateOptionalKey(window, hWnd);
 
-            try
-            {
-                shellBrowser.GetWindow(out var hWnd);
-
-                if (hWnd != 0)
-                    _windowEntryDict.UpdateOptionalKey(window, hWnd);
-
-                return hWnd;
-            }
-            finally
-            {
-                Marshal.ReleaseComObject(shellBrowser);
-            }
-        });
+            return Task.FromResult(hr >= 0 ? hWnd : 0);
+        }
+        finally
+        {
+            if (!ReferenceEquals(shellBrowser, window))
+                SafeReleaseComObject(shellBrowser);
+        }
     }
     private static nint GetActiveTabHandle(nint windowHandle)
     {
@@ -749,30 +791,54 @@ public class ExplorerWatcher : IHook
     }
     private static string[]? GetSelectedItems(InternetExplorer window)
     {
-        var selectedItems = (window.Document as ShellFolderView)!.SelectedItems();
-        var count = selectedItems.Count;
-        if (count == 0) return null;
-
-        var result = new string[count];
-        for (var i = 0; i < count; i++)
+        object? document = null;
+        FolderItems? selectedItems = null;
+        try
         {
-            result[i] = selectedItems.Item(i).Name;
-        }
+            document = window.Document;
+            if (document is not ShellFolderView view) return null;
+            selectedItems = view.SelectedItems();
+            var count = selectedItems.Count;
+            if (count == 0) return null;
 
-        return result;
+            var result = new string[count];
+            for (var i = 0; i < count; i++)
+            {
+                var item = selectedItems.Item(i);
+                try { result[i] = item.Name; }
+                finally { SafeReleaseComObject(item); }
+            }
+            return result;
+        }
+        finally
+        {
+            SafeReleaseComObject(selectedItems);
+            SafeReleaseComObject(document);
+        }
     }
     private static void SelectItems(InternetExplorer window, string[]? names)
     {
         if (names == null || names.Length == 0) return;
 
-        if (window.Document is not ShellFolderView document) return;
-
-        for (var i = 0; i < names.Length; i++)
+        object? document = null;
+        Folder? folder = null;
+        try
         {
-            var name = names[i];
-            object item = document.Folder.ParseName(name);
-            if (item == null) continue;
-            document.SelectItem(ref item, 1);
+            document = window.Document;
+            if (document is not ShellFolderView view) return;
+            folder = view.Folder;
+            foreach (var name in names)
+            {
+                object item = folder.ParseName(name);
+                if (item == null) continue;
+                try { view.SelectItem(ref item, 1); }
+                finally { SafeReleaseComObject(item); }
+            }
+        }
+        finally
+        {
+            SafeReleaseComObject(folder);
+            SafeReleaseComObject(document);
         }
     }
     private static string GetLocation(InternetExplorer window)
@@ -781,8 +847,24 @@ public class ExplorerWatcher : IHook
         if (!string.IsNullOrWhiteSpace(path)) return Helper.NormalizeLocation(path);
 
         // Recycle Bin, This PC, etc
-        path = ((window.Document as ShellFolderView)!.Folder as Folder2)!.Self.Path;
-        return Helper.NormalizeLocation(path);
+        object? document = null;
+        Folder? folder = null;
+        FolderItem? item = null;
+        try
+        {
+            document = window.Document;
+            if (document is not ShellFolderView view) return string.Empty;
+            folder = view.Folder;
+            if (folder is not Folder2 folder2) return string.Empty;
+            item = folder2.Self;
+            return Helper.NormalizeLocation(item.Path);
+        }
+        finally
+        {
+            SafeReleaseComObject(item);
+            SafeReleaseComObject(folder);
+            SafeReleaseComObject(document);
+        }
     }
     private async Task Navigate(InternetExplorer window, string path)
     {
@@ -819,25 +901,28 @@ public class ExplorerWatcher : IHook
                 Marshal.ReleaseComObject(folder);
         }
     }
-    private Task RunInStaThread(Action action, TaskCreationOptions tco = default, CancellationToken ct = default)
+    private Task RunInStaThread(Action action)
     {
-        return Task.Factory.StartNew(action, ct, tco, _staTaskScheduler);
+        return _dispatcher.InvokeAsync(action).Task;
     }
-    private Task<T?> RunInStaThread<T>(Func<T?> action, TaskCreationOptions tco = default, CancellationToken ct = default)
+    private Task<T?> RunInStaThread<T>(Func<T?> action)
     {
-        return Task.Factory.StartNew(action, ct, tco, _staTaskScheduler);
+        return _dispatcher.InvokeAsync(action).Task;
     }
     
     private void StartExplorerProcessCheck() => _explorerCheckTimer = new Timer(CheckForMainExplorer, null, 0, 1000);
     private void CheckForMainExplorer(object? state)
     {
         if (Volatile.Read(ref _disposed) != 0) return;
+        if (!_dispatcher.CheckAccess())
+        {
+            if (!_dispatcher.HasShutdownStarted)
+                _ = _dispatcher.BeginInvoke(new Action(() => CheckForMainExplorer(state)));
+            return;
+        }
 
-        var process = Helper.GetMainExplorerProcess();
+        using var process = Helper.GetMainExplorerProcess();
         if (process == null) return;
-        
-        _explorerCheckTimer?.Dispose();
-        _explorerCheckTimer = null;
         
         lock (_processLock)
         {
@@ -846,12 +931,24 @@ public class ExplorerWatcher : IHook
             
             _mainExplorerProcessId = process.Id;
             if (InitializeShellObjects())
+            {
+                _explorerCheckTimer?.Dispose();
+                _explorerCheckTimer = null;
                 OnShellInitialized?.Invoke();
+            }
+            else
+                _mainExplorerProcessId = 0;
         }
     }
     private void OnExplorerProcessTerminated(object? s, ProcessEventArgs e)
     {
         if (Volatile.Read(ref _disposed) != 0) return;
+        if (!_dispatcher.CheckAccess())
+        {
+            if (!_dispatcher.HasShutdownStarted)
+                _ = _dispatcher.BeginInvoke(new Action(() => OnExplorerProcessTerminated(s, e)));
+            return;
+        }
 
         // Main explorer.exe process (_shellWindows must be restarted)
         lock (_processLock)
@@ -872,9 +969,9 @@ public class ExplorerWatcher : IHook
         {
             if (_windowEntryDict.Count == 0) return;
             var crashCount = 0;
-            for (var i = _windowEntryDict.Count - 1; i >= 0; i--)
+            foreach (var (window, info) in ((IEnumerable<WindowEntry>)_windowEntryDict).ToArray().AsEnumerable().Reverse())
             {
-                var (window, info) = _windowEntryDict.ElementAt<WindowEntry>(i);
+                if (!_windowEntryDict.ContainsKey(window)) continue;
                 try
                 {
                     _ = window.HWND;
@@ -884,17 +981,16 @@ public class ExplorerWatcher : IHook
                     if (info.OnNavigateHandler != null)
                     {
                         crashCount++;
-                        lock (_closedWindowsLock)
-                            _closedWindows.Add(new WindowRecord(info.Location!, name: info.Name!));
+                        AddClosedWindow(new WindowRecord(info.Location!, name: info.Name!));
                     }
                     
-                    RemoveWindowAndUnhookEvents(window, info, useLock: false);
+                    RemoveWindowAndUnhookEvents(window, info);
                 }
             }
             if (!SettingsManager.RestorePreviousWindows || _windowEntryDict.Count > 0) return;
             lock (_closedWindowsLock)
             {
-                for (var i = 1; i <= crashCount; i++)
+                for (var i = 1; i <= Math.Min(crashCount, _closedWindows.Count); i++)
                     _closedWindows[_closedWindows.Count - i].Restore = true;
             }
         }
@@ -907,85 +1003,78 @@ public class ExplorerWatcher : IHook
             if (Volatile.Read(ref _disposed) != 0 || _shellObjectsInitialized)
                 return false;
 
-            _shellPathComparer = new ShellPathComparer();
-            _staTaskScheduler = new StaTaskScheduler();
-            _shellWindows = new ShellWindows();
-
-            _defaultLocation = Helper.GetDefaultExplorerLocation(_shellPathComparer);
-        
-            if (SettingsManager.ClosedWindows != null)
-                lock (_closedWindowsLock) _closedWindows.AddRange(SettingsManager.ClosedWindows);
-
-            // Hook the global "WindowRegistered" event
-            _windowRegisteredHandler = OnShellWindowRegistered;
-            _shellWindows.WindowRegistered += _windowRegisteredHandler;
-
-            // Hook the global "OBJECT_SHOW" event
-            _eventObjectShowHookCallback = OnWindowShown;
-            _eventObjectShowHookId = WinApi.SetWinEventHook(WinApi.EVENT_OBJECT_SHOW, WinApi.EVENT_OBJECT_SHOW, 0, _eventObjectShowHookCallback, 0, 0, 0);
-
-            // Hook the event handlers for already-open windows
-            var hasOpen = false;
-            var count = _shellWindows.Count;
-            for (var i = 0; i < count; i++)
-            {
-                if (_shellWindows.Item(i) is not InternetExplorer window)
-                    continue;
-                hasOpen = true;
-
-                var windowInfo = new WindowInfo();
-                _windowEntryDict.Add(window, windowInfo);
-                window.PutProperty("seenBefore", true);
-
-                _ = GetTabHandle(window);
-                HookWindowEvents(window, windowInfo);
-            }
-
-            if (hasOpen)
-                lock (_closedWindowsLock)
-                    foreach (var window in _closedWindows) window.Restore = false;
-
             _shellObjectsInitialized = true;
-            return true;
+            _shellGeneration++;
+            try
+            {
+                _shellPathComparer = new ShellPathComparer();
+                _shellWindows = new ShellWindows();
+                _defaultLocation = Helper.GetDefaultExplorerLocation(_shellPathComparer);
+
+                if (SettingsManager.ClosedWindows != null)
+                    foreach (var window in SettingsManager.ClosedWindows)
+                        AddClosedWindow(window);
+
+                // Shell callbacks share the WPF STA message loop.
+                _windowRegisteredHandler = OnShellWindowRegistered;
+                _shellWindows.WindowRegistered += _windowRegisteredHandler;
+
+                var hasOpen = false;
+                var count = _shellWindows.Count;
+                for (var i = 0; i < count; i++)
+                {
+                    if (_shellWindows.Item(i) is not InternetExplorer window)
+                        continue;
+                    hasOpen = true;
+
+                    var windowInfo = new WindowInfo { Handle = new IntPtr(window.HWND) };
+                    _windowEntryDict.Add(window, windowInfo);
+                    _ = GetTabHandle(window);
+                    HookWindowEvents(window, windowInfo);
+                }
+
+                if (hasOpen)
+                    lock (_closedWindowsLock)
+                        foreach (var window in _closedWindows) window.Restore = false;
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Shell initialization failed; retrying: {ex}");
+                DisposeShellObjects(persistWindows: false);
+                return false;
+            }
         }
     }
-    private void DisposeShellObjects()
+    private void DisposeShellObjects(bool persistWindows = true)
     {
         ShellWindows shellWindows;
         ShellPathComparer shellPathComparer;
-        StaTaskScheduler staTaskScheduler;
         DShellWindowsEvents_WindowRegisteredEventHandler? windowRegisteredHandler;
-        WinEventDelegate? eventObjectShowHookCallback;
-        nint eventObjectShowHookId;
 
         lock (_shellObjectsLock)
         {
             if (!_shellObjectsInitialized) return;
 
             _shellObjectsInitialized = false;
+            _shellGeneration++;
             shellWindows = _shellWindows;
             shellPathComparer = _shellPathComparer;
-            staTaskScheduler = _staTaskScheduler;
             windowRegisteredHandler = _windowRegisteredHandler;
-            eventObjectShowHookCallback = _eventObjectShowHookCallback;
-            eventObjectShowHookId = _eventObjectShowHookId;
 
             _windowRegisteredHandler = null;
-            _eventObjectShowHookCallback = null;
-            _eventObjectShowHookId = 0;
             _shellWindows = null!;
             _shellPathComparer = null!;
-            _staTaskScheduler = null!;
         }
 
-        SafeRun(PersistWindows);
+        if (persistWindows)
+            SafeRun(PersistWindows);
 
         // Unhook global event
         if (windowRegisteredHandler != null)
             SafeRun(() => shellWindows.WindowRegistered -= windowRegisteredHandler);
 
-        if (eventObjectShowHookCallback != null && eventObjectShowHookId != 0)
-            SafeRun(() => WinApi.UnhookWinEvent(eventObjectShowHookId));
 
         // Unsubscribe from each InternetExplorer instance's events
         WindowEntry[] windowEntries;
@@ -1004,15 +1093,15 @@ public class ExplorerWatcher : IHook
             if (windowInfo.OnNavigateHandler != null)
                 SafeRun(() => window.NavigateComplete2 -= windowInfo.OnNavigateHandler);
 
-            // Release the COM object
-            SafeReleaseComObject(window);
         }
 
         // Release the ShellWindows COM object
         SafeReleaseComObject(shellWindows);
 
         SafeDispose(shellPathComparer);
-        SafeDispose(staTaskScheduler);
+        foreach (var hWnd in Helper.HiddenWindows.Keys)
+            SafeRun(() => Helper.ShowWindow(hWnd, removeCache: true));
+        _mainWindowHandle = 0;
     }
 
     private void PersistWindows()
@@ -1045,6 +1134,11 @@ public class ExplorerWatcher : IHook
 
     public void Dispose()
     {
+        if (!_dispatcher.CheckAccess() && !_dispatcher.HasShutdownStarted)
+        {
+            _dispatcher.Invoke(Dispose);
+            return;
+        }
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
 
         _explorerCheckTimer?.Dispose();

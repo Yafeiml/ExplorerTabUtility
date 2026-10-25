@@ -220,9 +220,6 @@
                                             <CheckBox x:Name="CbAutoUpdate" Content="{DynamicResource AutoUpdate}"
                                                       Style="{StaticResource CustomCheckBoxStyle}"
                                                       ToolTip="{DynamicResource AutoUpdateTooltip}" />
-                                            <CheckBox x:Name="CbThemeIssue" Content="{DynamicResource ThemeIssues}"
-                                                      Style="{StaticResource CustomCheckBoxStyle}"
-                                                      ToolTip="{DynamicResource ThemeIssuesTooltip}" />
                                             <CheckBox x:Name="CbSaveClosedHistory" Content="{DynamicResource SaveClosedHistory}"
                                                       Style="{StaticResource CustomCheckBoxStyle}"
                                                       ToolTip="{DynamicResource SaveClosedHistoryTooltip}" />

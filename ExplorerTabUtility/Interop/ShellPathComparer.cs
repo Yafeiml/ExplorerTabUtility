@@ -144,9 +144,4 @@ public sealed class ShellPathComparer : IDisposable
         _disposed = true;
         GC.SuppressFinalize(this);
     }
-
-    ~ShellPathComparer()
-    {
-        Dispose();
-    }
 }

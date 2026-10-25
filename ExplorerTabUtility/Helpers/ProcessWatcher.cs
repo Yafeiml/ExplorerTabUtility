@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Diagnostics;
@@ -34,7 +34,7 @@ public class ProcessWatcher : IDisposable
     private readonly object _scanLock = new();
     private readonly SynchronizationContext? _syncContext;
     private bool _isMonitoring = true;
-    private bool _disposed;
+    private volatile bool _disposed;
 
     public event EventHandler<ProcessEventArgs>? ProcessCreated;
     public event EventHandler<ProcessEventArgs>? ProcessTerminated;
@@ -86,6 +86,8 @@ public class ProcessWatcher : IDisposable
 
         try
         {
+            if (_disposed || !_isMonitoring) return;
+
             // Check for terminated processes
             foreach (var pid in _trackedProcesses.Keys.ToList())
             {
@@ -134,7 +136,12 @@ public class ProcessWatcher : IDisposable
                     process.Exited += OnProcessExited;
                     process.EnableRaisingEvents = true;
 
-                    if (!_trackedProcesses.TryAdd(processId, (process, sessionId))) continue;
+                    if (!_trackedProcesses.TryAdd(processId, (process, sessionId)))
+                    {
+                        process.Exited -= OnProcessExited;
+                        SafeDisposeProcess(process);
+                        continue;
+                    }
 
                     // Successfully added - raise ProcessCreated event
                     var args = new ProcessEventArgs(processId, _processName, sessionId);
@@ -206,11 +213,14 @@ public class ProcessWatcher : IDisposable
         // Raise event in the original synchronization context if available
         if (_syncContext != null)
         {
-            _syncContext.Post(_ => eventHandler(this, args), null);
+            _syncContext.Post(_ =>
+            {
+                if (!_disposed) eventHandler(this, args);
+            }, null);
         }
         else
         {
-            eventHandler(this, args);
+            if (!_disposed) eventHandler(this, args);
         }
     }
 
@@ -231,37 +241,40 @@ public class ProcessWatcher : IDisposable
     /// </summary>
     public void Dispose()
     {
-        if (_disposed) return;
-
-        _disposed = true;
-        _isMonitoring = false;
-
-        // Stop timer
-        try
+        lock (_scanLock)
         {
-            _scanTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            _scanTimer.Dispose();
-        }
-        catch
-        {
-            // ignored
-        }
+            if (_disposed) return;
 
-        // Clean up tracked processes
-        foreach (var kvp in _trackedProcesses)
-        {
+            _disposed = true;
+            _isMonitoring = false;
+
+            // Stop timer
             try
             {
-                kvp.Value.Process.Exited -= OnProcessExited;
+                _scanTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                _scanTimer.Dispose();
             }
             catch
             {
                 // ignored
             }
 
-            SafeDisposeProcess(kvp.Value.Process);
-        }
+            // Clean up tracked processes
+            foreach (var kvp in _trackedProcesses)
+            {
+                try
+                {
+                    kvp.Value.Process.Exited -= OnProcessExited;
+                }
+                catch
+                {
+                    // ignored
+                }
 
-        _trackedProcesses.Clear();
+                SafeDisposeProcess(kvp.Value.Process);
+            }
+
+            _trackedProcesses.Clear();
+        }
     }
 }
