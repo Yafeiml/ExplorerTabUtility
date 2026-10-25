@@ -35,8 +35,17 @@ jobs:
       - name: Build and run regression checks
         shell: pwsh
         run: |
-          dotnet restore Tests/ExplorerTabUtility.RegressionTests.csproj -p:Configuration=Release --verbosity minimal
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          dotnet restore Tests/ExplorerTabUtility.RegressionTests.csproj -p:Configuration=Release --verbosity normal
+          $restoreExit = $LASTEXITCODE
+          if ($restoreExit) {
+            foreach ($path in @('Tests/obj/project.assets.json', 'Tests/obj/ExplorerTabUtility.RegressionTests.csproj.nuget.dgspec.json')) {
+              if (Test-Path -LiteralPath $path) {
+                Write-Output "Restore diagnostic: $path"
+                Get-Content -LiteralPath $path -Raw
+              }
+            }
+            exit $restoreExit
+          }
           msbuild Tests/ExplorerTabUtility.RegressionTests.csproj /p:Configuration=Release /nologo /verbosity:normal
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           dotnet Tests/bin/Release/net10.0-windows/ExplorerTabUtility.RegressionTests.dll
