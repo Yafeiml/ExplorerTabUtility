@@ -35,13 +35,17 @@ jobs:
       - name: Build and run regression checks
         shell: pwsh
         run: |
-          msbuild Tests/ExplorerTabUtility.RegressionTests.csproj /restore /p:Configuration=Release /nologo /verbosity:normal
+          dotnet restore Tests/ExplorerTabUtility.RegressionTests.csproj -p:Configuration=Release --verbosity minimal
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          msbuild Tests/ExplorerTabUtility.RegressionTests.csproj /p:Configuration=Release /nologo /verbosity:normal
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           dotnet Tests/bin/Release/net10.0-windows/ExplorerTabUtility.RegressionTests.dll
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           foreach ($project in @('StartupRegression', 'DependencySmoke')) {
             $projectFile = Get-ChildItem "Tests/$project/*.csproj" | Select-Object -First 1
-            msbuild $projectFile.FullName /restore /p:Configuration=Release /nologo /verbosity:normal
+            dotnet restore $projectFile.FullName -p:Configuration=Release --verbosity minimal
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            msbuild $projectFile.FullName /p:Configuration=Release /nologo /verbosity:normal
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
             foreach ($framework in @('net10.0-windows', 'net481')) {
               $output = "Tests/$project/bin/Release/$framework/$($projectFile.BaseName)"
@@ -78,7 +82,10 @@ jobs:
       - name: Build Project
         run: |
           $outputDir = "../publish/${{ matrix.framework }}/${{ matrix.arch }}"
-          msbuild "${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.csproj" /restore /t:Publish /p:Configuration=Release /p:TargetFramework=${{ matrix.framework }} /p:RuntimeIdentifier=win-${{ matrix.arch }} /p:PublishDir=$outputDir /p:DebugType=none
+          dotnet restore "${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.csproj" -p:Configuration=Release -p:TargetFramework=${{ matrix.framework }} --runtime win-${{ matrix.arch }} --verbosity minimal
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          msbuild "${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.csproj" /t:Publish /p:Configuration=Release /p:TargetFramework=${{ matrix.framework }} /p:RuntimeIdentifier=win-${{ matrix.arch }} /p:PublishDir=$outputDir /p:DebugType=none
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
         shell: pwsh
 
       - name: Zip Artifacts
